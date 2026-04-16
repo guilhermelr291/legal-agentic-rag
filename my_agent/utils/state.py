@@ -6,3 +6,4 @@ from typing import List
 class GraphState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
     documents: List[str]
+    generation: str

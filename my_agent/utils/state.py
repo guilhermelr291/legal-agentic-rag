@@ -7,3 +7,4 @@ class GraphState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
     documents: List[str]
     generation: str
+    queries_for_retrieval: List[str]

@@ -5,15 +5,18 @@ from langchain_openai import ChatOpenAI
 from my_agent.utils.state import MessagesState
 from my_agent.utils.state import GraphState
 from langchain_tavily import TavilySearch
+from typing import List
 
 
+
+llm = ChatOpenAI(model="gpt-5-nano")
 
 class RouteQuery(BaseModel):
     datasource: Literal["vectorstore", "web_search"] = Field(
         description="Route to vectorstore for Python topics or web_search for general knowledge"
     )
 
-llm = ChatOpenAI(model="gpt-5-nano")
+
 structured_llm = llm.with_structured_output(RouteQuery)
 prompt = ChatPromptTemplate.from_messages([
     ("system", "You are an expert at routing questions. Use vectorstore for Python topics, web_search otherwise."),
@@ -37,13 +40,12 @@ def router_node(state: MessagesState) -> Literal["vectorstore", "web_search"]:
 
 tavily_tool = TavilySearch(max_results=5)
 
-llm_optimized_web_search = ChatOpenAI(model="gpt-5-nano")
 prompt_optimized_web_search = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful assistant and your task is to transform the user question into a search query optimized for tavily search."),
     ("human", "User question: {question}"),
 ])
 
-optimized_web_search_chain = prompt_optimized_web_search | llm_optimized_web_search
+optimized_web_search_chain = prompt_optimized_web_search | llm
 
 def web_search_node(state: GraphState) -> GraphState:
     question = state["messages"][-1].content
@@ -94,3 +96,25 @@ def generate_answer_node(state: GraphState) -> GraphState:
     question = state["messages"][-1].content
     generation = generate_answer_chain.invoke({"documents": documents, "question": question})
     return {"generation": generation}
+
+
+
+
+
+class QueryTranslation(BaseModel):
+    queries: List[str] = Field(description="5 different search queries for the user question")
+
+
+query_translation_prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant and your task is to generate 5 different search queries for the user question. The queries should cover different aspects of the question and should be optimized for semantic similarity and bm25 (hybrid search)"),
+    ("human", "User question: {question}"),
+])
+
+query_translation_chain = query_translation_prompt | llm.with_structured_output(QueryTranslation)
+
+
+def query_translation_node(state: MessagesState) -> GraphState:
+    question = state["messages"][-1].content
+    translation = query_translation_chain.invoke({"question": question})
+    queries = translation.queries
+    return {"queries_for_retrieval": queries}

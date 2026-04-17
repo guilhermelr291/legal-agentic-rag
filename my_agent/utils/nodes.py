@@ -57,23 +57,98 @@ def web_search_node(state: GraphState) -> GraphState:
 
 
 
-class QueryTranslation(BaseModel):
+
+class MultiQueryGeneration(BaseModel):
     queries: List[str] = Field(description="5 different search queries for the user question")
 
 
-query_translation_prompt = ChatPromptTemplate.from_messages([
+multi_query_generation_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful assistant and your task is to generate 5 different search queries for the user question. The queries should cover different aspects of the question and should be optimized for semantic similarity and bm25 (hybrid search)"),
     ("human", "User question: {question}"),
 ])
 
-query_translation_chain = query_translation_prompt | llm.with_structured_output(QueryTranslation)
+multi_query_generation_chain = multi_query_generation_prompt | llm.with_structured_output(MultiQueryGeneration)
 
 
-def query_translation_node(state: MessagesState) -> GraphState:
+def multi_query_generation_node(state: MessagesState) -> GraphState:
     question = state["messages"][-1].content
-    translation = query_translation_chain.invoke({"question": question})
+    translation = multi_query_generation_chain.invoke({"question": question})
     queries = translation.queries
     return {"queries_for_retrieval": queries}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async def retrieval_node(state: GraphState) -> GraphState:
+    queries = state["queries_for_retrieval"]
+    results = await tavily_tool.abatch(queries)
+    return {"documents": results}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class IsDocumentRelevant(BaseModel):
+    binary_score: str = Field(description="Document is relevant to the user question, 'yes' or 'no'")
+
+
+documents_grader_prompt = ChatPromptTemplate.from_messages([
+    ("system", """You are a helpful assistant and your task is to grade the document as relevant or not relevant to the user question. :
+    1. The document should be relevant to the user question
+    2. The document should be not relevant to the user question
+    """),
+    ("human", "Document: {document} \n\n User question: {question}"),
+])
+
+documents_grader_chain = documents_grader_prompt | llm.with_structured_output(IsDocumentRelevant)
+
+
+async def documents_grader_node(state: GraphState) -> GraphState:
+    documents = state["documents"]
+    question = state["messages"][-1].content    
+    inputs = [{"document": document, "question": question} for document in documents]
+    
+  
+    results = await documents_grader_chain.abatch(inputs)
+    
+
+    relevant_documents = [
+        doc for doc, result in zip(documents, results) 
+        if result.binary_score.lower() == "yes"
+    ]
+    
+    if not documents:
+        return {"documents": []}
+    
+    return {"documents": relevant_documents}
+
+
+
 
 
 
@@ -127,40 +202,5 @@ def generate_answer_node(state: GraphState) -> GraphState:
 
 
 
-class IsDocumentRelevant(BaseModel):
-    binary_score: str = Field(description="Document is relevant to the user question, 'yes' or 'no'")
-    
-
-
-documents_grader_prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a helpful assistant and your task is to grade the document as relevant or not relevant to the user question. :
-    1. The document should be relevant to the user question
-    2. The document should be not relevant to the user question
-    """),
-    ("human", "Document: {document} \n\n User question: {question}"),
-])
-
-documents_grader_chain = documents_grader_prompt | llm.with_structured_output(IsDocumentRelevant)
-
-
-
-async def documents_grader_node(state: GraphState) -> GraphState:
-    documents = state["documents"]
-    question = state["messages"][-1].content    
-    inputs = [{"document": document, "question": question} for document in documents]
-    
-  
-    results = await documents_grader_chain.abatch(inputs)
-    
-
-    relevant_documents = [
-        doc for doc, result in zip(documents, results) 
-        if result.binary_score.lower() == "yes"
-    ]
-    
-    if not documents:
-        return {"documents": []}
-    
-    return {"documents": relevant_documents}
     
     

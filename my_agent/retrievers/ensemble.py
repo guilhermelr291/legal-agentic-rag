@@ -12,7 +12,7 @@ class EnsembleRetriever(Retriever):
         retrievers: List,
         weights: List[float] = None,
         c: float = 60,
-        max_workers: int = 4,
+        max_workers: int = 5,
     ):
         self.retrievers = retrievers
         self.weights = weights

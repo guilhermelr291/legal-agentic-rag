@@ -1,17 +1,12 @@
-# ensemble.py
+import asyncio
 from typing import List
 from concurrent.futures import ThreadPoolExecutor
 from langchain_core.documents import Document
 from langchain_core.retrievers import EnsembleRetriever as LangChainEnsembleRetriever
-from my_agent.retrievers.base import Retriever  # Importa ABC
+from my_agent.retrievers.base import Retriever
 
 
-class EnsembleRetriever(Retriever):  # <-- Herda de ABC
-    """
-    Ensemble retriever implementation.
-    Must implement all abstract methods or Python raises TypeError!
-    """
-    
+class EnsembleRetriever(Retriever):
     def __init__(
         self,
         retrievers: List,
@@ -24,7 +19,6 @@ class EnsembleRetriever(Retriever):  # <-- Herda de ABC
         self.c = c
         self.max_workers = max_workers
         
-      
         langchain_retrievers = []
         for r in retrievers:
             if hasattr(r, 'as_retriever'):
@@ -39,11 +33,9 @@ class EnsembleRetriever(Retriever):  # <-- Herda de ABC
         )
 
     def retrieve(self, query: str, k: int = 10) -> List[Document]:
-        """Required: implement abstract method."""
         return self._ensemble.invoke(query, config={"k": k})
 
     def batch_retrieve(self, queries: List[str], k: int = 10) -> List[List[Document]]:
-        """Required: implement abstract method."""
         if len(queries) == 1:
             return [self.retrieve(queries[0], k)]
 
@@ -63,3 +55,12 @@ class EnsembleRetriever(Retriever):  # <-- Herda de ABC
                     results.append([])
 
         return results
+
+    async def abatch_retrieve(self, queries: List[str], k: int = 10) -> List[List[Document]]:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            self.batch_retrieve,
+            queries,
+            k
+        )

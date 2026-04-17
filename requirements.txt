@@ -1,0 +1,11 @@
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-openai>=0.0.5
+langgraph>=0.0.50
+langchain-chroma>=0.0.5
+chromadb>=0.4.18
+langchain-tavily>=0.1.0
+tavily-python>=0.3.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0

@@ -24,7 +24,7 @@ class EnsembleRetriever(Retriever):  # <-- Herda de ABC
         self.c = c
         self.max_workers = max_workers
         
-        # Converte para retrievers LangChain internamente
+      
         langchain_retrievers = []
         for r in retrievers:
             if hasattr(r, 'as_retriever'):

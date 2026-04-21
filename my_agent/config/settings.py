@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     openai_model_generation: str = "gpt-5-mini"
     tavily_api_key: str | None = None
     tavily_max_results: int = 5
+    cohere_api_key: str | None = None
+    cohere_rerank_model: str = "rerank-v3.5"
+    rerank_top_k: int = 10
 
     class Config:
         env_file = ".env"

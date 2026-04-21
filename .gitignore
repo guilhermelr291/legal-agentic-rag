@@ -119,6 +119,8 @@ ipython_config.py
 
 langgraph_adaptive_rag.ipynb
 
+.cursor/
+
 # pixi
 #   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
 # pixi.lock

@@ -1,11 +1,14 @@
 from contextvars import ContextVar
-from typing import Any
+
 
 from langchain_openai import ChatOpenAI
 from my_agent.retrievers.base import Retriever
 
+
+
 _llm_var: ContextVar[ChatOpenAI | None] = ContextVar("llm", default=None)
 _retriever_var: ContextVar[Retriever | None] = ContextVar("retriever", default=None)
+_reranker_var: ContextVar["Reranker" | None] = ContextVar("reranker", default=None)
 
 
 def set_llm(llm: ChatOpenAI) -> None:
@@ -30,6 +33,18 @@ def get_retriever() -> Retriever:
     return retriever
 
 
+def set_reranker(reranker: "Reranker") -> None:
+    _reranker_var.set(reranker)
+
+
+def get_reranker() -> "Reranker":
+    reranker = _reranker_var.get()
+    if reranker is None:
+        raise RuntimeError("Reranker not configured. Call set_reranker() first.")
+    return reranker
+
+
 def clear_registry() -> None:
     _llm_var.set(None)
     _retriever_var.set(None)
+    _reranker_var.set(None)

@@ -20,8 +20,9 @@ def create_bm25_retriever(documents=None):
 
 
 def create_ensemble_retriever(retrievers, weights=None):
+    """Build hybrid ensemble. For two retrievers, default weights are 0.7 / 0.3 (dense, BM25)."""
     from my_agent.retrievers.ensemble import EnsembleRetriever
-    
+
     return EnsembleRetriever(
         retrievers=retrievers,
         weights=weights,

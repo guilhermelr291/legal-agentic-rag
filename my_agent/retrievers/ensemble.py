@@ -1,21 +1,27 @@
 import asyncio
-from typing import List
 from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional
 from langchain_core.documents import Document
 from langchain_core.retrievers import EnsembleRetriever as LangChainEnsembleRetriever
 from my_agent.retrievers.base import Retriever
+
+
+DEFAULT_HYBRID_WEIGHTS: tuple[float, float] = (0.7, 0.3)
 
 
 class EnsembleRetriever(Retriever):
     def __init__(
         self,
         retrievers: List,
-        weights: List[float] = None,
+        weights: Optional[List[float]] = None,
         c: float = 60,
         max_workers: int = 5,
     ):
         self.retrievers = retrievers
-        self.weights = weights
+        if weights is None and len(retrievers) == 2:
+            self.weights = list(DEFAULT_HYBRID_WEIGHTS)
+        else:
+            self.weights = weights
         self.c = c
         self.max_workers = max_workers
         

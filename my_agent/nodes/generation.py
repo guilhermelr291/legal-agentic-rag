@@ -5,10 +5,10 @@ from my_agent.state import GraphState
 from my_agent.config.settings import get_settings
 
 
-def generate_answer_node(state: GraphState) -> GraphState:
+async def generate_answer_node(state: GraphState) -> GraphState:
     settings = get_settings()
     llm = ChatOpenAI(model=settings.openai_model_generation)
-    
+
     generate_answer_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful assistant. Your task is to generate a response to the user question based ONLY on the documents provided.
 
@@ -35,9 +35,9 @@ Your final response here with markdown formatting and sources
 User question: {question}"""),
     ])
     generate_answer_chain = generate_answer_prompt | llm
-    
+
     documents = state["documents"]
     question = state["messages"][-1].content
-    generation = generate_answer_chain.invoke({"documents": documents, "question": question})
-    
+    generation = await generate_answer_chain.ainvoke({"documents": documents, "question": question})
+
     return {"generation": generation}

@@ -16,11 +16,29 @@ def set_llm(llm: ChatOpenAI) -> None:
 
 
 def get_llm() -> ChatOpenAI:
+    """Get the configured LLM.
+
+    Raises:
+        RuntimeError: If LLM is not configured. Call set_llm() or init_default_llm() first.
+    """
     llm = _llm_var.get()
     if llm is None:
-        settings = get_settings()
-        llm = ChatOpenAI(model=settings.openai_lightweight_model)
-        _llm_var.set(llm)
+        raise RuntimeError("LLM not configured. Call set_llm() or init_default_llm() first.")
+    return llm
+
+
+def init_default_llm() -> ChatOpenAI:
+    """Initialize and set the default LLM based on settings.
+
+    Returns:
+        The configured ChatOpenAI instance.
+    """
+    settings = get_settings()
+    llm = ChatOpenAI(
+        model=settings.openai_lightweight_model,
+        api_key=settings.openai_api_key
+    )
+    set_llm(llm)
     return llm
 
 

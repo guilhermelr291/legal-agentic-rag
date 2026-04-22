@@ -15,9 +15,8 @@ async def documents_grader_node(state: GraphState) -> GraphState:
     llm = get_llm()
     
     documents_grader_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful assistant and your task is to grade the document as relevant or not relevant to the user question. :
-    1. The document should be relevant to the user question
-    2. The document should be not relevant to the user question
+        ("system", """You are a helpful assistant and your task is to grade the document as relevant or not relevant to the user question. 
+        Return 'yes' if the document is relevant to the user question, 'no' otherwise.
     """),
         ("human", "Document: {document} \n\n User question: {question}"),
     ])

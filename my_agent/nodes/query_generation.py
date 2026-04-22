@@ -8,7 +8,7 @@ from my_agent.registry import get_llm
 
 class MultiQueryGeneration(BaseModel):
     queries: List[str] = Field(
-        description="5 different search queries for the user question"
+        description="5 different search queries to retrieve documents for the user question"
     )
 
 
@@ -22,7 +22,7 @@ def multi_query_generation_node(state: GraphState) -> GraphState:
     multi_query_generation_chain = multi_query_generation_prompt | llm.with_structured_output(MultiQueryGeneration)
     
     question = state["messages"][-1].content
-    translation = multi_query_generation_chain.invoke({"question": question})
-    queries = translation.queries
+    response = multi_query_generation_chain.invoke({"question": question})
+    queries = response.queries
     
     return {"queries_for_retrieval": queries}

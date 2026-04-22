@@ -12,10 +12,8 @@ async def retrieval_node(state: GraphState) -> GraphState:
     user_query = state["messages"][-1].content
     retriever = get_retriever()
 
-    # Retrieve documents for each query
     ranked_per_query = await retriever.abatch_retrieve(queries, k=PER_QUERY_K)
 
-    # Fuse results using Reciprocal Rank Fusion
     fused = reciprocal_rank_fusion_documents(
         ranked_per_query,
         c=60.0,

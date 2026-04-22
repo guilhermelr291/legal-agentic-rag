@@ -1,4 +1,4 @@
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END, START
 from typing import Literal
 
 from my_agent.state import GraphState
@@ -10,6 +10,7 @@ from my_agent.nodes.generation import generate_answer_node
 from my_agent.nodes.web_search import web_search_node
 
 
+
 def should_continue(state: GraphState) -> Literal["generate", "web_search"]:
     documents = state.get("documents", [])
     if not documents:
@@ -18,18 +19,18 @@ def should_continue(state: GraphState) -> Literal["generate", "web_search"]:
 
 
 def create_graph():
-    workflow = StateGraph(GraphState)
+    graph = StateGraph(GraphState)
     
-    workflow.add_node("router", router_node)
-    workflow.add_node("generate_queries", multi_query_generation_node)
-    workflow.add_node("retrieve", retrieval_node)
-    workflow.add_node("grade_docs", documents_grader_node)
-    workflow.add_node("generate", generate_answer_node)
-    workflow.add_node("web_search", web_search_node)
+    graph.add_node("router", router_node)
+    graph.add_node("generate_queries", multi_query_generation_node)
+    graph.add_node("retrieve", retrieval_node)
+    graph.add_node("grade_docs", documents_grader_node)
+    graph.add_node("generate", generate_answer_node)
+    graph.add_node("web_search", web_search_node)
     
-    workflow.set_entry_point("router")
+    graph.add_edge(START, "router")
     
-    workflow.add_conditional_edges(
+    graph.add_conditional_edges(
         "router",
         router_node,
         {
@@ -38,10 +39,10 @@ def create_graph():
         }
     )
     
-    workflow.add_edge("generate_queries", "retrieve")
-    workflow.add_edge("retrieve", "grade_docs")
+    graph.add_edge("generate_queries", "retrieve")
+    graph.add_edge("retrieve", "grade_docs")
     
-    workflow.add_conditional_edges(
+    graph.add_conditional_edges(
         "grade_docs",
         should_continue,
         {
@@ -50,7 +51,7 @@ def create_graph():
         }
     )
     
-    workflow.add_edge("web_search", "generate")
-    workflow.add_edge("generate", END)
+    graph.add_edge("web_search", "generate")
+    graph.add_edge("generate", END)
     
-    return workflow.compile()
+    return graph.compile()

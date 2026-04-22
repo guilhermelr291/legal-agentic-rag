@@ -21,17 +21,14 @@ def should_continue(state: GraphState) -> Literal["generate", "web_search"]:
 def create_graph():
     graph = StateGraph(GraphState)
     
-    graph.add_node("router", router_node)
     graph.add_node("generate_queries", multi_query_generation_node)
     graph.add_node("retrieve", retrieval_node)
     graph.add_node("grade_docs", documents_grader_node)
     graph.add_node("generate", generate_answer_node)
     graph.add_node("web_search", web_search_node)
-    
-    graph.add_edge(START, "router")
-    
+
     graph.add_conditional_edges(
-        "router",
+        START,
         router_node,
         {
             "vectorstore": "generate_queries",

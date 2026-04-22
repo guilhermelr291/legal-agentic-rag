@@ -16,7 +16,7 @@ Rules:
 1. Do not make up any information not present in the documents
 2. If you don't know the answer, say "I don't know"
 3. Use markdown to format your response
-4. Include sources in your response
+4. Include sources at the end of each sentence of your response using [1], [2], [3], etc.
 5. Think step by step and critique your answer before generating the final response
 
 Important: Your thought process MUST be between the tags <thinking> and </thinking>. This section will NOT be shown to the user.

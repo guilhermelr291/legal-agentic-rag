@@ -3,7 +3,7 @@ from contextvars import ContextVar
 
 from langchain_openai import ChatOpenAI
 from my_agent.retrievers.base import Retriever
-
+from my_agent.config.settings import get_settings
 
 
 _llm_var: ContextVar[ChatOpenAI | None] = ContextVar("llm", default=None)
@@ -18,7 +18,9 @@ def set_llm(llm: ChatOpenAI) -> None:
 def get_llm() -> ChatOpenAI:
     llm = _llm_var.get()
     if llm is None:
-        raise RuntimeError("LLM not configured. Call set_llm() first.")
+        settings = get_settings()
+        llm = ChatOpenAI(model=settings.openai_lightweight_model)
+        _llm_var.set(llm)
     return llm
 
 

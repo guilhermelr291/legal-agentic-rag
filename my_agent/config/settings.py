@@ -4,7 +4,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     openai_api_key: str
-    openai_model_default: str = "gpt-5-nano"
+    openai_lightweight_model: str = "gpt-5-nano"
     openai_model_generation: str = "gpt-5-mini"
     tavily_api_key: str | None = None
     tavily_max_results: int = 5

@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 from langchain_core.documents import Document
 from langchain_core.retrievers import EnsembleRetriever as LangChainEnsembleRetriever
 from my_agent.retrievers.base import Retriever
 
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_HYBRID_WEIGHTS: tuple[float, float] = (0.7, 0.3)
 
@@ -24,14 +27,14 @@ class EnsembleRetriever(Retriever):
             self.weights = weights
         self.c = c
         self.max_workers = max_workers
-        
+
         langchain_retrievers = []
         for r in retrievers:
             if hasattr(r, 'as_retriever'):
                 langchain_retrievers.append(r.as_retriever())
             else:
                 langchain_retrievers.append(r)
-        
+
         self._ensemble = LangChainEnsembleRetriever(
             retrievers=langchain_retrievers,
             weights=self.weights,
@@ -46,19 +49,26 @@ class EnsembleRetriever(Retriever):
             return [self.retrieve(queries[0], k)]
 
         workers = min(self.max_workers, len(queries))
+        errors = []
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = [
-                executor.submit(self.retrieve, query, k) for query in queries
-            ]
+            future_to_query = {
+                executor.submit(self.retrieve, query, k): query
+                for query in queries
+            }
 
             results = []
-            for future in futures:
+            for future in future_to_query:
+                query = future_to_query[future]
                 try:
                     results.append(future.result())
                 except Exception as e:
-                    print(f"Retrieval error: {e}")
+                    logger.error(f"Retrieval error for query '{query}': {e}", exc_info=True)
+                    errors.append({"query": query, "error": str(e)})
                     results.append([])
+
+        if errors:
+            logger.warning(f"Failed to retrieve for {len(errors)} out of {len(queries)} queries")
 
         return results
 

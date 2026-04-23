@@ -1,12 +1,14 @@
 """Cohere reranker implementation."""
 
-import asyncio
+
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
 from langchain_core.documents import Document
 
 from my_agent.rerankers.base import Reranker
+
+import cohere
 
 
 class CohereReranker(Reranker):
@@ -31,13 +33,6 @@ class CohereReranker(Reranker):
             model: Model name to use for reranking.
             max_workers: Maximum thread pool workers for async operations.
         """
-        try:
-            import cohere
-        except ImportError as e:
-            raise ImportError(
-                "cohere package is required. Install with: pip install cohere"
-            ) from e
-
         self.client = cohere.Client(api_key)
         self.async_client = cohere.AsyncClient(api_key)
         self.model = model

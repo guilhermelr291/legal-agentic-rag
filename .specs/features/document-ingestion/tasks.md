@@ -101,12 +101,12 @@ python -c "from my_agent.config.settings import get_settings; s = get_settings()
 
 **Done when**:
 
-- [ ] SQL file creates `documents` table with all fields from design.md
-- [ ] SQL file creates `chunks` table with pgvector embedding column (1536 dims)
-- [ ] SQL file creates `graph_nodes` and `graph_edges` tables
-- [ ] All RLS policies defined for user isolation
-- [ ] Indexes created for performance
-- [ ] SQL is syntactically valid (tested via `psql --check` or similar)
+- [x] SQL file creates `documents` table with all fields from design.md
+- [x] SQL file creates `chunks` table with pgvector embedding column (1536 dims)
+- [x] SQL file creates `graph_nodes` and `graph_edges` tables
+- [x] All RLS policies defined for user isolation
+- [x] Indexes created for performance
+- [x] SQL is syntactically valid (tested via `psql --check` or similar)
 
 **Tests**: none  
 **Gate**: build

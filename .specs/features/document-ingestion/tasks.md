@@ -70,10 +70,10 @@ T14 ──→ T15 ──┬→ T16
 
 **Done when**:
 
-- [ ] `supabase-py`, `psycopg2-binary`, `pgvector` added to dependencies
-- [ ] Settings updated with Supabase URL, Service Role Key, JWT Secret
-- [ ] Settings include `GRAPH_RAG_ENABLED` feature flag (default: false)
-- [ ] No import errors when running `python -c "from my_agent.config.settings import get_settings; print(get_settings())"`
+- [x] `supabase-py`, `psycopg2-binary`, `pgvector` added to dependencies
+- [x] Settings updated with Supabase URL, Service Role Key, JWT Secret
+- [x] Settings include `GRAPH_RAG_ENABLED` feature flag (default: false)
+- [x] No import errors when running `python -c "from my_agent.config.settings import get_settings; print(get_settings())"`
 
 **Tests**: none  
 **Gate**: build

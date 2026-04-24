@@ -135,12 +135,12 @@ head -50 supabase/migrations/001_document_ingestion.sql
 
 **Done when**:
 
-- [ ] `SupabaseClient` class with `from_service_role()` factory
-- [ ] Async methods: `upload_file()`, `download_file()`, `delete_file()`
-- [ ] Async DB methods: `insert()`, `upsert()`, `select()`, `update()` with RLS awareness
-- [ ] Connection pooling configured
-- [ ] Error handling for network/storage failures
-- [ ] `python -c "from services.storage.supabase_client import SupabaseClient; print('Import OK')"` passes
+- [x] `SupabaseClient` class with `from_service_role()` factory
+- [x] Async methods: `upload_file()`, `download_file()`, `delete_file()`
+- [x] Async DB methods: `insert()`, `upsert()`, `select()`, `update()` with RLS awareness
+- [x] Connection pooling configured
+- [x] Error handling for network/storage failures
+- [x] `python -c "from services.storage.supabase_client import SupabaseClient; print('Import OK')"` passes
 
 **Tests**: none  
 **Gate**: build

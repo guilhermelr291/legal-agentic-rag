@@ -11,8 +11,16 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, BinaryIO
 
-from supabase._async.client import AsyncClient as SupabaseAsyncClient
-from supabase.lib.client_options import ClientOptions
+try:
+    from supabase._async.client import AsyncClient as SupabaseAsyncClient
+except ImportError:
+    # Fallback for different supabase-py versions
+    from supabase.client import AsyncClient as SupabaseAsyncClient
+
+try:
+    from supabase.lib.client_options import ClientOptions
+except ImportError:
+    from supabase.lib.options import ClientOptions
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence

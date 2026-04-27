@@ -168,16 +168,21 @@ python -c "from services.storage.supabase_client import SupabaseClient; print('I
 
 **Done when**:
 
-- [ ] `DocumentRepository` class with methods:
+- [x] `DocumentRepository` class with methods:
   - `create(document: DocumentCreate) -> DocumentRecord`
   - `get_by_id(document_id: str, user_id: str) -> DocumentRecord | None`
-  - `update_status(document_id: str, status: str, error_msg: str | None = None)`
+  - `update_status(document_id: str, status: str, error_msg: str | None = None, user_id: str | None = None)`
   - `list_by_user(user_id: str, status: str | None = None) -> List[DocumentRecord]`
-- [ ] `ChunkRepository` class with methods:
-  - `upsert_chunks(chunks: List[ChunkRecord])` (batch upsert)
+  - `delete(document_id: str, user_id: str) -> bool` (bonus method)
+- [x] `ChunkRepository` class with methods:
+  - `upsert_chunks(chunks: List[ChunkRecord])` (batch upsert with ON CONFLICT)
   - `get_by_document(document_id: str, user_id: str) -> List[ChunkRecord]`
-- [ ] All methods enforce `user_id` filtering for RLS
-- [ ] Pydantic models for type safety
+  - `delete_by_document(document_id: str, user_id: str) -> int` (bonus method)
+- [x] All methods enforce `user_id` filtering for RLS
+- [x] Pydantic models for type safety:
+  - `DocumentCreate` - input model for creating documents
+  - `DocumentRecord` - complete document record with datetime parsing
+  - `ChunkRecord` - chunk with embedding and metadata
 
 **Tests**: none  
 **Gate**: build

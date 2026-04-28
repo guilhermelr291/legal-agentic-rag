@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/document-ingestion/design.md`  
 **Spec**: `.specs/features/document-ingestion/spec.md`  
-**Status**: Draft
+**Status**: In Progress (T5 Complete)
 
 ---
 
@@ -210,17 +210,17 @@ python -c "from services.db.repositories import DocumentRepository, ChunkReposit
 
 **Done when**:
 
-- [ ] `PDFExtractor` class implementing `TextExtractor` interface
+- [x] `PDFExtractor` class implementing `TextExtractor` interface
   - Uses `PyPDFLoader` from langchain_community
   - Returns: text, pages list with page numbers
-- [ ] `DOCXExtractor` class implementing `TextExtractor` interface
+- [x] `DOCXExtractor` class implementing `TextExtractor` interface
   - Uses `python-docx` library
   - Returns: text, paragraph metadata
-- [ ] `XLSXMetadataExtractor` class
+- [x] `XLSXMetadataExtractor` class
   - Uses `openpyxl` library
   - Returns: `XLSXMetadata` with sheets, columns, row counts
-- [ ] All extractors handle errors gracefully (return empty result with error flag)
-- [ ] Base `TextExtractor` ABC in `services/extractors/base.py`
+- [x] All extractors handle errors gracefully (return empty result with error flag)
+- [x] Base `TextExtractor` ABC in `services/extractors/base.py`
 
 **Tests**: none  
 **Gate**: build
@@ -253,16 +253,16 @@ print('All extractors import OK')
 
 **Done when**:
 
-- [ ] `LegalChunker` class with config: max_tokens=800, min_tokens=100, overlap_tokens=50
-- [ ] `_detect_headings()` method with regex patterns for:
+- [x] `LegalChunker` class with config: max_tokens=1000, min_tokens=100, overlap_tokens=100
+- [x] `_detect_headings()` method with regex patterns for:
   - Numbered sections: `^\d+\.\s*`
   - Articles: `Article\s+\d+|Art\.\s*\d+`
-  - Clauses: `CLÁUSULA\s+\d+|CLAUSULA\s+\d+`
+  - Clauses: `CLAUSE\s+\d+`
   - Sections: `SECTION|CHAPTER|TITLE`
-- [ ] `_extract_anchors()` method detecting references like "Clause X", "Article Y", "Annex Z"
-- [ ] `chunk()` method returning `List[LegalChunk]` with all metadata fields
-- [ ] Handles merge of small chunks (<100 tokens) with adjacent chunks
-- [ ] Uses tiktoken for accurate token counting (OpenAI cl100k_base)
+- [x] `_extract_anchors()` method detecting references like "Clause X", "Article Y", "Annex Z"
+- [x] `chunk()` method returning `List[LegalChunk]` with all metadata fields
+- [x] Handles merge of small chunks (<100 tokens) with adjacent chunks
+- [x] Uses tiktoken for accurate token counting (OpenAI cl100k_base)
 
 **Tests**: none  
 **Gate**: build

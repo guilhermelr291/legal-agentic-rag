@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 API_VERSION = "0.1.0"
-API_PREFIX = "/api/"
+API_PREFIX = "/api/v1"
 
 # CORS origins - configured for Streamlit default port
 DEFAULT_CORS_ORIGINS = [

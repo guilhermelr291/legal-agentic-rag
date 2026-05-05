@@ -5,10 +5,12 @@ Coordinates the full document processing workflow:
 2. Route to appropriate processor based on file type
 3. Extract text/metadata, chunk, generate embeddings
 4. Update document status with stage tracking
+5. Trigger async graph indexing (when enabled)
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import tempfile
@@ -16,13 +18,16 @@ import time
 from pathlib import Path
 from typing import Any, Literal
 
+from my_agent.config.settings import get_settings
 from services.chunking.legal_chunker import LegalChunker
+from services.db.graph_repository import GraphRepository
 from services.db.repositories import ChunkRepository, DocumentRepository, DocumentRecord
 from services.embeddings.generator import EmbeddingGenerator
 from services.extractors.base import ExtractionResult
 from services.extractors.docx_extractor import DOCXExtractor
 from services.extractors.pdf_extractor import PDFExtractor
-from services.extractors.xlsx_extractor import  XLSXMetadataExtractor
+from services.extractors.xlsx_extractor import XLSXMetadataExtractor
+from services.graph.extractor import GraphExtractor
 from services.storage.supabase_client import StorageError, SupabaseClient
 
 logger = logging.getLogger(__name__)
@@ -30,6 +35,7 @@ logger = logging.getLogger(__name__)
 # Constants
 STORAGE_BUCKET = "documents"
 MAX_FILE_SIZE_MB = 50
+GRAPH_INDEXING_TIMEOUT_SECONDS = 60  # Max time for graph indexing before timeout
 
 
 class DocumentProcessorError(Exception):
@@ -51,22 +57,29 @@ class DocumentProcessor:
 
     Orchestrates the full processing workflow from download to ready status,
     routing files to appropriate processors based on type (PDF/DOCX vs XLSX).
+    Supports optional async graph indexing for Graph RAG when enabled.
 
     Usage:
         >>> from services.storage.supabase_client import SupabaseClient
         >>> from services.db.repositories import DocumentRepository, ChunkRepository
+        >>> from services.db.graph_repository import GraphRepository
         >>> from services.embeddings.generator import EmbeddingGenerator
+        >>> from services.graph.extractor import GraphExtractor
         >>>
         >>> client = await SupabaseClient.from_service_role()
         >>> doc_repo = DocumentRepository(client)
         >>> chunk_repo = ChunkRepository(client)
+        >>> graph_repo = GraphRepository(client)
         >>> embed_gen = EmbeddingGenerator()
+        >>> graph_extractor = GraphExtractor(enabled=get_settings().graph_rag_enabled)
         >>>
         >>> processor = DocumentProcessor(
         ...     storage_client=client,
         ...     document_repo=doc_repo,
         ...     chunk_repo=chunk_repo,
         ...     embedding_generator=embed_gen,
+        ...     graph_extractor=graph_extractor,
+        ...     graph_repository=graph_repo,
         ... )
         >>> await processor.process(document_id="uuid", user_id="user_uuid")
     """
@@ -78,6 +91,8 @@ class DocumentProcessor:
         chunk_repo: ChunkRepository,
         embedding_generator: EmbeddingGenerator,
         chunker: LegalChunker | None = None,
+        graph_extractor: GraphExtractor | None = None,
+        graph_repository: GraphRepository | None = None,
     ) -> None:
         """Initialize the document processor with all dependencies.
 
@@ -87,17 +102,28 @@ class DocumentProcessor:
             chunk_repo: Repository for chunk records
             embedding_generator: Generator for embeddings
             chunker: Optional custom chunker (uses default if None)
+            graph_extractor: Optional graph extractor for Graph RAG indexing
+            graph_repository: Optional graph repository for persisting nodes/edges
         """
         self._storage = storage_client
         self._doc_repo = document_repo
         self._chunk_repo = chunk_repo
         self._embed_gen = embedding_generator
         self._chunker = chunker or LegalChunker()
+        self._graph_extractor = graph_extractor
+        self._graph_repo = graph_repository
 
         # Initialize extractors
         self._pdf_extractor = PDFExtractor()
         self._docx_extractor = DOCXExtractor()
         self._xlsx_extractor = XLSXMetadataExtractor()
+
+        # Check if graph indexing is enabled via settings
+        self._graph_enabled = (
+            graph_extractor is not None
+            and graph_repository is not None
+            and get_settings().graph_rag_enabled
+        )
 
     async def process(self, document_id: str, user_id: str) -> None:
         """Main entry point for document processing.
@@ -347,6 +373,10 @@ class DocumentProcessor:
             extract_duration + chunk_duration + embed_duration,
         )
 
+        # Stage 5: Trigger async graph indexing (non-blocking)
+        # This runs in the background and doesn't affect document status
+        self._trigger_graph_indexing(doc.id, user_id, chunks)
+
     async def _process_xlsx(
         self,
         doc: DocumentRecord,
@@ -434,4 +464,166 @@ class DocumentProcessor:
             return self._pdf_extractor.extract(file_path)
         else:  # docx
             return self._docx_extractor.extract(file_path)
-        
+
+    async def _update_graph_status(
+        self,
+        document_id: str,
+        user_id: str,
+        status: Literal["processing", "ready", "failed", "timeout", "ready_empty"],
+        error_msg: str | None = None,
+    ) -> None:
+        """Update graph_status in documents.meta.
+
+        Graph status is tracked separately from document status to allow
+        graceful degradation when graph indexing fails.
+
+        Args:
+            document_id: Document UUID
+            user_id: User ID for RLS
+            status: Graph status value
+            error_msg: Optional error message for failed/timeout status
+        """
+        try:
+            meta_update: dict[str, Any] = {"graph_status": status}
+            if error_msg:
+                meta_update["graph_error"] = error_msg
+
+            await self._doc_repo.update_meta(
+                document_id=document_id,
+                meta=meta_update,
+                user_id=user_id,
+            )
+            logger.info(
+                "Updated graph_status to '%s' for document: %s",
+                status,
+                document_id,
+            )
+        except Exception as e:
+            # Graph status updates should never fail the document
+            logger.warning(
+                "Failed to update graph_status for document %s: %s",
+                document_id,
+                e,
+            )
+
+    async def _run_graph_indexing(
+        self,
+        document_id: str,
+        user_id: str,
+        chunks: list[Any],
+    ) -> None:
+        """Run graph indexing with timeout handling.
+
+        Extracts nodes and edges from chunks and persists to graph storage.
+        Updates graph_status throughout the process. Errors are caught
+        and logged without affecting document status.
+
+        Args:
+            document_id: Document UUID
+            user_id: User ID for RLS
+            chunks: Legal chunks extracted from document
+        """
+        if not self._graph_enabled or not self._graph_extractor or not self._graph_repo:
+            logger.debug("Graph indexing skipped: not enabled or missing dependencies")
+            return
+
+        logger.info(
+            "Starting graph indexing for document: %s (%d chunks)",
+            document_id,
+            len(chunks),
+        )
+
+        # Mark graph as processing
+        await self._update_graph_status(document_id, user_id, "processing")
+
+        try:
+            # Run extraction with timeout
+            extraction_task = self._graph_extractor.extract(
+                document_id=document_id,
+                user_id=user_id,
+                chunks=chunks,
+            )
+
+            result = await asyncio.wait_for(
+                extraction_task,
+                timeout=GRAPH_INDEXING_TIMEOUT_SECONDS,
+            )
+
+            # Persist nodes and edges if any were extracted
+            if result.nodes and result.edges:
+                await self._graph_repo.upsert_nodes(result.nodes)
+                await self._graph_repo.upsert_edges(result.edges)
+
+                logger.info(
+                    "Graph indexing complete: %d nodes, %d edges for document: %s",
+                    len(result.nodes),
+                    len(result.edges),
+                    document_id,
+                )
+
+                # Mark as ready or ready_empty based on results
+                if len(result.edges) == 0:
+                    await self._update_graph_status(
+                        document_id, user_id, "ready_empty"
+                    )
+                else:
+                    await self._update_graph_status(document_id, user_id, "ready")
+            else:
+                logger.info(
+                    "Graph indexing returned empty result for document: %s",
+                    document_id,
+                )
+                await self._update_graph_status(document_id, user_id, "ready_empty")
+
+        except asyncio.TimeoutError:
+            logger.warning(
+                "Graph indexing timed out after %ds for document: %s",
+                GRAPH_INDEXING_TIMEOUT_SECONDS,
+                document_id,
+            )
+            await self._update_graph_status(
+                document_id,
+                user_id,
+                "timeout",
+                error_msg=f"Graph indexing exceeded {GRAPH_INDEXING_TIMEOUT_SECONDS}s timeout",
+            )
+
+        except Exception as e:
+            logger.exception(
+                "Graph indexing failed for document: %s", document_id
+            )
+            await self._update_graph_status(
+                document_id,
+                user_id,
+                "failed",
+                error_msg=str(e),
+            )
+
+    def _trigger_graph_indexing(
+        self,
+        document_id: str,
+        user_id: str,
+        chunks: list[Any],
+    ) -> None:
+        """Trigger graph indexing as a background async task.
+
+        This method schedules graph indexing to run asynchronously without
+        blocking the main processing pipeline. Graph errors are handled
+        gracefully and don't affect the document's ready status.
+
+        Args:
+            document_id: Document UUID
+            user_id: User ID for RLS
+            chunks: Legal chunks extracted from document
+        """
+        if not self._graph_enabled:
+            return
+
+        # Create background task for graph indexing
+        # This runs independently and doesn't block the caller
+        asyncio.create_task(
+            self._run_graph_indexing(document_id, user_id, chunks)
+        )
+        logger.info(
+            "Triggered async graph indexing for document: %s", document_id
+        )

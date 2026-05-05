@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/document-ingestion/design.md`  
 **Spec**: `.specs/features/document-ingestion/spec.md`  
-**Status**: In Progress (T8 Complete)
+**Status**: In Progress (T9 Complete)
 
 ---
 
@@ -385,15 +385,19 @@ print('DocumentProcessor imports OK')
 
 **Done when**:
 
-- [ ] Graph models: `GraphNode`, `GraphEdge`, `Evidence` Pydantic classes
-- [ ] `GraphExtractor` class with:
+- [x] Graph models: `GraphNode`, `GraphEdge`, `Evidence` Pydantic classes
+- [x] `GraphExtractor` class with:
   - `__init__(llm, enabled: bool = False)`
   - `extract(document_id, chunks) -> GraphExtractionResult`
-- [ ] `_heuristic_extraction()` for cheap reference detection (Clause X, Article Y)
-- [ ] `_llm_extraction()` for entity/relation extraction with structured output
-- [ ] Evidence required on every edge (snippet + chunk_index + offsets)
-- [ ] Edges without evidence are dropped (not persisted)
-- [ ] Graph status tracked separately: documents.meta.graph_status
+- [x] `_heuristic_extraction()` for cheap reference detection (Clause X, Article Y)
+- [x] `_llm_extraction()` for entity/relation extraction with structured output
+- [x] Evidence required on every edge (snippet + chunk_index + offsets)
+- [x] Edges without evidence are dropped (not persisted)
+- [x] Graph status tracked separately: documents.meta.graph_status
+
+**Status**: ✅ Complete (2026-05-04)
+**Files**: `services/graph/__init__.py`, `services/graph/models.py`, `services/graph/extractor.py`
+**Notes**: Graph extraction implementation complete. Pre-existing `langchain_text_splitters` import issue in `services/chunking/legal_chunker.py` (T6) blocks runtime verification but syntax check passes. Graph status field tracked in documents.meta as specified.
 
 **Tests**: none  
 **Gate**: build

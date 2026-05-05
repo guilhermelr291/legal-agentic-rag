@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/document-ingestion/design.md`  
 **Spec**: `.specs/features/document-ingestion/spec.md`  
-**Status**: In Progress (T12 Complete)
+**Status**: In Progress (T13 Complete)
 
 ---
 
@@ -544,6 +544,10 @@ python -m py_compile api/main.py
 
 ### T13: Create Streamlit Document Upload Page
 
+**Status**: ✅ Complete (2026-05-05)  
+**Files**: `frontend/pages/documents.py`, `frontend/__init__.py`, `frontend/pages/__init__.py`, `pyproject.toml`  
+**Notes**: Streamlit dependency added to pyproject.toml. Upload page implements all requirements including client-side validation (50MB), progress indicator, and comprehensive error handling.
+
 **What**: UI for file upload with validation feedback  
 **Where**: `frontend/pages/documents.py`  
 **Depends on**: T12  
@@ -557,16 +561,16 @@ python -m py_compile api/main.py
 
 **Done when**:
 
-- [ ] `render_upload_section()`:
+- [x] `render_upload_section()`:
   - File uploader widget (PDF/DOCX/XLSX only)
   - Client-side size validation (50MB)
   - Upload button with progress indicator
   - Display validation errors inline
-- [ ] API client functions:
+- [x] API client functions:
   - `upload_file(file, user_id)` - POST to /documents/upload
   - Returns document_id or raises with error message
-- [ ] Success/error handling with Streamlit notifications
-- [ ] Page layout with clear sections
+- [x] Success/error handling with Streamlit notifications
+- [x] Page layout with clear sections
 
 **Tests**: none  
 **Gate**: build
@@ -574,7 +578,7 @@ python -m py_compile api/main.py
 **Verify**:
 
 ```bash
-python -c "from frontend.pages.documents import render_upload_section; print('Upload section imports OK')"
+python -c "from frontend.pages.documents import render_upload_section, upload_file, UploadError; print('Upload section imports OK')"
 ```
 
 ---

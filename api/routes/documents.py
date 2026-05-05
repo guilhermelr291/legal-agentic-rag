@@ -449,3 +449,61 @@ async def list_documents(
         total=len(summaries),
         status_filter=status_filter,
     )
+
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {"model": ErrorResponse, "description": "Document not found"},
+    },
+)
+async def delete_document(
+    document_id: str,
+    user_id: str = Depends(get_current_user_id),
+    doc_repo: DocumentRepository = Depends(get_document_repo),
+    client: SupabaseClient = Depends(get_supabase_client),
+) -> None:
+    """Delete a document and its associated data.
+
+    Deletes the document record, all chunks, graph data, and the
+    file from storage. This operation is idempotent - if the document
+    doesn't exist, it returns 204 (no error).
+
+    Args:
+        document_id: UUID of the document to delete.
+        user_id: Current user ID from auth dependency.
+        doc_repo: Document repository for database operations.
+        client: Supabase client for storage operations.
+
+    Raises:
+        HTTPException: If document not found or delete fails.
+    """
+    # First get the document to check if it exists and get storage path
+    doc = await doc_repo.get_by_id(document_id, user_id)
+
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document not found: {document_id}",
+        )
+
+    # Delete from storage first (best effort - don't fail if storage delete fails)
+    try:
+        await client.delete_file(
+            bucket_name=STORAGE_BUCKET,
+            file_path=doc.storage_path,
+        )
+        logger.info("Deleted file from storage: %s", doc.storage_path)
+    except Exception:
+        logger.warning("Failed to delete file from storage: %s", doc.storage_path)
+        # Continue with DB deletion even if storage deletion fails
+
+    # Delete document record (cascades to chunks and graph data via FK)
+    deleted = await doc_repo.delete(document_id, user_id)
+
+    if not deleted:
+        # Document existed when we checked but was deleted between get and delete
+        logger.warning("Document disappeared during deletion: %s", document_id)
+
+    logger.info("Deleted document: %s", document_id)

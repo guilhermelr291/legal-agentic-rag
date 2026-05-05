@@ -172,6 +172,40 @@ def list_documents(user_id: str = DEFAULT_USER_ID, status_filter: str | None = N
         raise UploadError(f"Failed to list documents: {e}") from e
 
 
+def delete_document(document_id: str, user_id: str = DEFAULT_USER_ID) -> bool:
+    """Delete a document and its associated data.
+
+    Args:
+        document_id: UUID of the document to delete.
+        user_id: User identifier for RLS.
+
+    Returns:
+        True if deleted successfully.
+
+    Raises:
+        UploadError: If the deletion fails.
+    """
+    url = f"{API_BASE_URL}/documents/{document_id}"
+
+    try:
+        response = requests.delete(
+            url,
+            timeout=10,
+            headers={"X-User-ID": user_id},
+        )
+        response.raise_for_status()
+        return True
+
+    except requests.exceptions.HTTPError as e:
+        status_code = e.response.status_code
+        if status_code == 404:
+            raise UploadError("Document not found", status_code) from e
+        raise UploadError(f"Failed to delete document: {e}", status_code) from e
+
+    except requests.exceptions.RequestException as e:
+        raise UploadError(f"Failed to delete document: {e}") from e
+
+
 # =============================================================================
 # Validation Functions
 # =============================================================================
@@ -346,11 +380,20 @@ def render_status_badge(status: str, processing_time: float | None = None) -> st
 
 
 def render_document_list() -> None:
-    """Render the document list with status display.
+    """Render the document list with status display and auto-refresh.
 
-    Shows all user's documents with status badges and metadata.
+    Shows all user's documents with status badges, metadata,
+    re-upload functionality for failed documents, and auto-refresh
+    for processing documents.
     """
     st.header("Your Documents")
+
+    # Initialize session state for tracking
+    if "docs_refresh_trigger" not in st.session_state:
+        st.session_state.docs_refresh_trigger = 0
+
+    # Check if we need to auto-refresh (any processing documents)
+    needs_refresh = _check_processing_documents()
 
     try:
         docs = list_documents()
@@ -359,17 +402,38 @@ def render_document_list() -> None:
             st.info("No documents yet. Upload your first document above!")
             return
 
-        # Display as a table-like structure
+        # Track if any documents are still processing (for auto-refresh)
+        has_processing = any(doc.get('status') == 'processing' for doc in docs)
+
+        # Display as a table-like structure with headers
+        cols = st.columns([3, 1, 1, 1, 1])
+        headers = ["Filename", "Status", "Size", "Updated", "Action"]
+        for col, header in zip(cols, headers):
+            col.markdown(f"**{header}**")
+
+        st.divider()
+
+        # Display documents
         for doc in docs:
             with st.container():
-                col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+                doc_id = doc.get('document_id')
+                status = doc.get('status')
+                filename = doc.get('filename', 'Unknown')
+
+                # Poll status if processing
+                if status == 'processing' and doc_id:
+                    final_status = poll_status(doc_id)
+                    if final_status:
+                        # Terminal state reached, will refresh on next cycle
+                        has_processing = True
+
+                col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 1, 1])
 
                 with col1:
-                    st.write(f"**{doc['filename']}**")
-                    st.caption(f"Type: {doc['file_type'].upper()}")
+                    st.write(f"**{filename}**")
+                    st.caption(f"Type: {doc.get('file_type', 'unknown').upper()}")
 
                 with col2:
-                    status = doc['status']
                     badge = render_status_badge(status)
                     st.write(badge)
 
@@ -395,8 +459,19 @@ def render_document_list() -> None:
                         date_str = "Unknown"
                     st.write(date_str)
 
+                with col5:
+                    # Show action button based on status
+                    if status == 'failed':
+                        delete_key = f"delete_{doc_id}"
+                        if st.button("🗑️ Remove", key=delete_key, help="Remove failed document"):
+                            _handle_delete_document(doc_id, filename)
+
                 # Add divider
                 st.divider()
+
+        # Auto-refresh mechanism
+        if has_processing:
+            _schedule_refresh()
 
     except UploadError as e:
         st.error(f"Failed to load documents: {e.message}")
@@ -404,6 +479,71 @@ def render_document_list() -> None:
     except Exception as e:
         logger.exception("Error loading document list")
         st.error(f"Error loading documents: {e}")
+
+
+def _check_processing_documents() -> bool:
+    """Check if any documents are in processing state.
+
+    Returns:
+        True if any document is processing and refresh is needed.
+    """
+    try:
+        docs = list_documents()
+        return any(doc.get('status') == 'processing' for doc in docs)
+    except Exception:
+        return False
+
+
+def _schedule_refresh() -> None:
+    """Schedule an automatic refresh of the document list.
+
+    Uses Streamlit's rerun capability to refresh the page
+    and update document statuses.
+    """
+    # Store the time of last refresh in session state
+    now = datetime.now(timezone.utc)
+    last_refresh_key = "docs_last_refresh"
+
+    if last_refresh_key in st.session_state:
+        try:
+            last_refresh = datetime.fromisoformat(st.session_state[last_refresh_key])
+            elapsed = (now - last_refresh).total_seconds()
+
+            # Only refresh every 3 seconds to avoid too many reruns
+            if elapsed >= 3:
+                st.session_state[last_refresh_key] = now.isoformat()
+                st.rerun()
+        except Exception:
+            st.session_state[last_refresh_key] = now.isoformat()
+    else:
+        st.session_state[last_refresh_key] = now.isoformat()
+
+
+def _handle_delete_document(document_id: str, filename: str) -> None:
+    """Handle deletion of a failed document.
+
+    Args:
+        document_id: UUID of the document to delete.
+        filename: Name of the file for display purposes.
+    """
+    try:
+        with st.spinner(f"Removing {filename}..."):
+            deleted = delete_document(document_id)
+            if deleted:
+                st.success(f"✅ Removed {filename}")
+                # Clear polling state for this document
+                poll_key = f"poll_{document_id}"
+                if poll_key in st.session_state:
+                    del st.session_state[poll_key]
+                # Refresh to update list
+                st.rerun()
+            else:
+                st.error(f"❌ Could not remove {filename}")
+    except UploadError as e:
+        st.error(f"❌ Failed to remove: {e.message}")
+    except Exception as e:
+        logger.exception("Error deleting document")
+        st.error(f"❌ Error: {e}")
 
 
 def poll_status(document_id: str) -> str | None:

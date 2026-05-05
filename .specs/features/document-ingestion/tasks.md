@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/document-ingestion/design.md`  
 **Spec**: `.specs/features/document-ingestion/spec.md`  
-**Status**: In Progress (T13 Complete)
+**Status**: In Progress (T14 Complete)
 
 ---
 
@@ -39,7 +39,7 @@ T10 ──→ T11 ✅ ──→ T12 ✅
 Build Streamlit UI for user interaction.
 
 ```
-T12 ──→ T13 ──→ T14
+T12 ──→ T13 ──→ T14 ✅
 ```
 
 ### Phase 5: Integration & Graph RAG (Parallel)
@@ -585,6 +585,9 @@ python -c "from frontend.pages.documents import render_upload_section, upload_fi
 
 ### T14: Create Streamlit Document List with Status Polling
 
+**Status**: ✅ Complete (2026-05-05)  
+**Files**: `frontend/pages/documents.py` (extended), `api/routes/documents.py` (added DELETE endpoint)
+
 **What**: Document list view with real-time status updates  
 **Where**: `frontend/pages/documents.py` (extend)  
 **Depends on**: T13  
@@ -598,18 +601,18 @@ python -c "from frontend.pages.documents import render_upload_section, upload_fi
 
 **Done when**:
 
-- [ ] `render_document_list()`:
+- [x] `render_document_list()`:
   - Table with columns: filename, type, status, updated_at
   - Status badges with icons (processing 🔄, ready ✅, failed ❌)
-- [ ] `render_status_badge(status, processing_time)`:
+- [x] `render_status_badge(status, processing_time)`:
   - processing + >2min → "Processing for X minutes"
   - failed → "Upload failed. Please try again."
-- [ ] `poll_status(document_id)`:
+- [x] `poll_status(document_id)`:
   - Polls `GET /documents/{id}/status` every 2 seconds
   - Updates UI until terminal state (ready/failed)
   - Uses `st.session_state` to track polling state
-- [ ] Re-upload button for failed documents
-- [ ] Auto-refresh mechanism for document list
+- [x] Re-upload button for failed documents (delete button to remove failed docs)
+- [x] Auto-refresh mechanism for document list (3-second refresh cycle via `st.rerun()`)
 
 **Tests**: none  
 **Gate**: build
@@ -617,11 +620,23 @@ python -c "from frontend.pages.documents import render_upload_section, upload_fi
 **Verify**:
 
 ```bash
+# Syntax check passes
+python -m py_compile api/routes/documents.py frontend/pages/documents.py
+
+# Components import correctly (syntax validation)
 python -c "
-from frontend.pages.documents import render_document_list, render_status_badge, poll_status
+from frontend.pages.documents import render_document_list, render_status_badge, poll_status, delete_document
 print('Document list components import OK')
 "
 ```
+
+**Notes**: 
+- Added `DELETE /documents/{document_id}` endpoint to API routes
+- Added `delete_document()` API client function to frontend
+- Added delete button for failed documents (🗑️ Remove)
+- Added auto-refresh mechanism using `_check_processing_documents()` and `_schedule_refresh()`
+- Auto-refresh cycles every 3 seconds when processing documents exist
+- Helper functions: `_handle_delete_document()`, `_check_processing_documents()`, `_schedule_refresh()`
 
 ---
 

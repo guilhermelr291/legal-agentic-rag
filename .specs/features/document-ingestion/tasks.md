@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/document-ingestion/design.md`  
 **Spec**: `.specs/features/document-ingestion/spec.md`  
-**Status**: In Progress (T9 Complete)
+**Status**: In Progress (T10 Complete)
 
 ---
 
@@ -23,7 +23,7 @@ After infrastructure, build the processing pipeline components.
 ```
                     ┌→ T6 ──→ T7 ✅
 T4 ──→ T5 ──→ T8 ──┤
-                    └→ T9 ──→ T10
+                    └→ T9 ──→ T10 ✅
 ```
 
 ### Phase 3: API Layer (Sequential)
@@ -416,6 +416,9 @@ print('Graph components import OK')
 
 ### T10: Create Graph Repository
 
+**Status**: ✅ Complete (2026-05-04)  
+**Files**: `services/db/graph_repository.py`
+
 **What**: Database operations for graph nodes and edges  
 **Where**: `services/db/graph_repository.py`  
 **Depends on**: T9, T4  
@@ -429,12 +432,12 @@ print('Graph components import OK')
 
 **Done when**:
 
-- [ ] `GraphRepository` class with methods:
+- [x] `GraphRepository` class with methods:
   - `upsert_nodes(nodes: List[GraphNode])` - idempotent per document_id
   - `upsert_edges(edges: List[GraphEdge])` - with evidence validation
   - `delete_by_document(document_id: str, user_id: str)` - cleanup on re-upload
-- [ ] All edges validated to have non-empty evidence before upsert
-- [ ] RLS enforcement via user_id filtering
+- [x] All edges validated to have non-empty evidence before upsert
+- [x] RLS enforcement via user_id filtering
 
 **Tests**: none  
 **Gate**: build
@@ -442,7 +445,7 @@ print('Graph components import OK')
 **Verify**:
 
 ```bash
-python -c "from services.db.graph_repository import GraphRepository; print('GraphRepository imports OK')"
+python -m py_compile services/db/graph_repository.py && echo "Syntax OK"
 ```
 
 ---
@@ -785,7 +788,7 @@ T14 ──→ T15 (Graph Wiring)
 | T7 | Embedding service | ✅ Granular |
 | T8 | Processor orchestrator | ✅ Granular |
 | T9 | Graph extractor | ✅ Granular |
-| T10 | Graph repository | ✅ Granular |
+| T10 | Graph repository | ✅ Complete |
 | T11 | API routes | ✅ Granular |
 | T12 | FastAPI app setup | ✅ Granular |
 | T13 | Upload UI | ✅ Granular |

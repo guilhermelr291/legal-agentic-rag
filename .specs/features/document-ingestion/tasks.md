@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/document-ingestion/design.md`  
 **Spec**: `.specs/features/document-ingestion/spec.md`  
-**Status**: In Progress (T7 Complete)
+**Status**: In Progress (T8 Complete)
 
 ---
 
@@ -328,6 +328,10 @@ print('Model:', get_settings().openai_embedding_model)
 
 ### T8: Create Document Processor Orchestrator
 
+**Status**: ✅ Complete (2026-05-04)  
+**Files**: `services/document_processor.py`, `services/__init__.py`, `services/db/repositories.py`  
+**Notes**: Pre-existing `langchain_text_splitters` import issue in `services/chunking/legal_chunker.py` (T6) blocks runtime verification. INGEST-10 fully implemented - DocumentRepository.update_meta() added to persist XLSX metadata.
+
 **What**: Main pipeline coordinator that routes to correct processor based on file type  
 **Where**: `services/document_processor.py`  
 **Depends on**: T5, T6, T7  
@@ -341,16 +345,16 @@ print('Model:', get_settings().openai_embedding_model)
 
 **Done when**:
 
-- [ ] `DocumentProcessor` class initialized with all dependencies
-- [ ] `process(document_id: str, user_id: str)` main entry point:
+- [x] `DocumentProcessor` class initialized with all dependencies
+- [x] `process(document_id: str, user_id: str)` main entry point:
   - Downloads file from Storage
   - Routes to `_process_pdf_docx()` or `_process_xlsx()`
   - Updates status at each stage (logs to console/structured logging)
   - Handles errors with status='failed' and error_msg
-- [ ] `_process_pdf_docx()` pipeline: extract → chunk → embed → update status=ready
-- [ ] `_process_xlsx()` pipeline: extract metadata → save to documents.meta → update status=ready (skip chunking)
-- [ ] Stage logging with duration tracking per stage
-- [ ] All errors caught and document status updated appropriately
+- [x] `_process_pdf_docx()` pipeline: extract → chunk → embed → update status=ready
+- [x] `_process_xlsx()` pipeline: extract metadata → save to documents.meta → update status=ready (skip chunking)
+- [x] Stage logging with duration tracking per stage
+- [x] All errors caught and document status updated appropriately
 
 **Tests**: none  
 **Gate**: build

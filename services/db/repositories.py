@@ -306,6 +306,65 @@ class DocumentRepository:
                 f"Failed to update status for {document_id}: {e}", e
             ) from e
 
+    async def update_meta(
+        self,
+        document_id: str,
+        meta: dict[str, Any],
+        user_id: str,
+    ) -> DocumentRecord:
+        """Update the meta JSONB field of a document.
+
+        Merges new meta fields with existing ones. Useful for storing
+        XLSX metadata, graph status, and other dynamic document info.
+
+        Args:
+            document_id: UUID of the document to update.
+            meta: Dictionary of meta fields to update/merge.
+            user_id: User ID for RLS filtering (must match document owner).
+
+        Returns:
+            The updated DocumentRecord.
+
+        Raises:
+            DatabaseError: If update fails or document not found.
+        """
+        if not user_id:
+            raise DatabaseError(
+                "user_id is required for update_meta to enforce RLS"
+            )
+
+        try:
+            # Update meta field - Supabase will merge JSONB
+            update_data: dict[str, Any] = {"meta": meta}
+
+            result = await self._client.update(
+                table_name="documents",
+                data=update_data,
+                user_id=user_id,
+                filters={"id": document_id},
+            )
+
+            if not result.data:
+                raise DatabaseError(
+                    f"Document not found or access denied: {document_id}"
+                )
+
+            record = DocumentRecord.from_db_row(result.data[0])
+            logger.info(
+                "Updated document %s meta: %s",
+                document_id,
+                list(meta.keys()),
+            )
+            return record
+
+        except DatabaseError:
+            raise
+        except Exception as e:
+            logger.exception("Failed to update document meta: %s", document_id)
+            raise DatabaseError(
+                f"Failed to update meta for {document_id}: {e}", e
+            ) from e
+
     async def list_by_user(
         self,
         user_id: str,

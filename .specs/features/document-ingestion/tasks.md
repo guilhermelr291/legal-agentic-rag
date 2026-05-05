@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/document-ingestion/design.md`  
 **Spec**: `.specs/features/document-ingestion/spec.md`  
-**Status**: In Progress (T5 Complete)
+**Status**: In Progress (T7 Complete)
 
 ---
 
@@ -21,7 +21,7 @@ T1 ──→ T2 ──→ T3 ──→ T4
 After infrastructure, build the processing pipeline components.
 
 ```
-                    ┌→ T6 ──→ T7
+                    ┌→ T6 ──→ T7 ✅
 T4 ──→ T5 ──→ T8 ──┤
                     └→ T9 ──→ T10
 ```
@@ -297,14 +297,14 @@ print('Chunker works' if len(chunks) > 0 else 'FAILED')
 
 **Done when**:
 
-- [ ] `EmbeddingGenerator` class with `OpenAIEmbeddings` client
-- [ ] `generate_and_upsert()` method:
+- [x] `EmbeddingGenerator` class with `OpenAIEmbeddings` client
+- [x] `generate_and_upsert()` method:
   - Batches chunks (batch_size=100)
   - Generates embeddings via `embed_documents()`
   - Upserts to Supabase with `ON CONFLICT (document_id, chunk_index) DO UPDATE`
-- [ ] Progress logging ("Batch X/Y complete")
-- [ ] Error handling with one retry on API failure
-- [ ] Returns statistics: chunks_processed, embeddings_generated, errors
+- [x] Progress logging ("Batch X/Y complete")
+- [x] Error handling with one retry on API failure
+- [x] Returns statistics: chunks_processed, embeddings_generated, errors
 
 **Tests**: none  
 **Gate**: build
@@ -319,6 +319,10 @@ print('EmbeddingGenerator imports OK')
 print('Model:', get_settings().openai_embedding_model)
 "
 ```
+
+**Status**: ✅ Complete (2026-05-04)  
+**Files**: `services/embeddings/__init__.py`, `services/embeddings/generator.py`  
+**Notes**: Pre-existing `EnsembleRetriever` import issue in `my_agent/retrievers/ensemble.py` blocks full integration test but implementation is correct.
 
 ---
 

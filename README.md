@@ -47,7 +47,7 @@ Legal Agentic RAG is designed to process, index, and query legal documents (PDF,
 ## Tech Stack
 
 - **Frontend:** Streamlit
-- **Backend:** FastAPI, Python 3.11+
+- **Backend:** FastAPI, Python 3.12+
 - **Database:** Supabase (PostgreSQL + pgvector)
 - **Embeddings:** OpenAI `text-embedding-3-small`
 - **LLM:** OpenAI GPT models
@@ -61,7 +61,7 @@ Legal Agentic RAG is designed to process, index, and query legal documents (PDF,
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - [uv](https://github.com/astral-sh/uv) package manager
 - Supabase account
 - OpenAI API key
@@ -72,39 +72,38 @@ Legal Agentic RAG is designed to process, index, and query legal documents (PDF,
 
 ```bash
 git clone <repository-url>
-cd legal-agentic-rag
+cd <your-repo-directory>
 ```
 
-1. Install dependencies:
+2. Install dependencies:
 
 ```bash
 uv sync
 ```
 
-1. Set up environment variables:
+3. Set up environment variables:
+
+Create a `.env` file at the project root (see domain-specific settings under `src/*/config.py` for prefixes such as `APP_`, `STORAGE_`, `DOCUMENTS_`). At minimum you typically need:
+
+- `SUPABASE_URL` — Supabase project URL
+- `SUPABASE_KEY` — Supabase service role key
+- `SUPABASE_JWT_SECRET` — JWT secret used by the API for authorization
+- `OPENAI_API_KEY` — OpenAI API key (embeddings / LLM)
+
+4. Run the API server (from the repository root):
 
 ```bash
-cp .env.example .env
-# Edit .env with your credentials
+uv run python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Required environment variables:
+The app instance is defined in `src.main` as `app`; OpenAPI docs are available when `APP_ENVIRONMENT` is one of `development`, `staging`, or `local`.
 
-- `SUPABASE_URL` - Your Supabase project URL
-- `SUPABASE_KEY` - Your Supabase service role key
-- `SUPABASE_JWT_SECRET` - JWT secret for token validation
-- `OPENAI_API_KEY` - Your OpenAI API key
+5. Optional — Streamlit UI:
 
-1. Run the API server:
+Document-oriented UI code lives under `frontend/pages/`. For example:
 
 ```bash
-uv run python -m api.main
-```
-
-1. Run the Streamlit frontend:
-
-```bash
-uv run streamlit run frontend/app.py
+uv run streamlit run frontend/pages/documents.py
 ```
 
 ## Document Processing Pipeline
@@ -118,26 +117,35 @@ uv run streamlit run frontend/app.py
 
 ## Project Structure
 
+The backend is organized **by domain** under `src/`: each folder is a bounded context with its own `router`, `schemas`, `models`, `service`, `dependencies`, and `config` where applicable. Shared infrastructure lives in `src/common/`.
+
+Prefer **explicit imports across domains** (module alias keeps coupling visible and avoids star-imports):
+
+```python
+from src.documents import service as documents_service
+from src.storage import service as storage_service
+from src.agents import graph as agents_graph
+```
+
 ```
 .
-├── api/                    # FastAPI backend
-│   ├── main.py            # API entry point
-│   ├── routes/            # API endpoints
-│   └── models.py          # Pydantic models
-├── frontend/              # Streamlit application
-│   ├── app.py            # Main entry
-│   └── pages/            # UI pages
-├── services/             # Business logic
-│   ├── storage/          # Supabase client
-│   ├── extraction/       # Document parsers
-│   ├── chunking/         # Text segmentation
-│   └── embeddings/       # Vector generation
-├── core/                 # RAG agent components
-│   ├── state.py          # Graph state definitions
-│   ├── nodes/            # LangGraph nodes
-│   └── retrievers/       # Vector/Graph retrievers
-├── .specs/               # Specifications & planning
-│   └── features/         # Feature specifications
+├── src/
+│   ├── main.py                 # FastAPI app factory + `app` instance
+│   ├── common/                 # Shared settings, DB, base models, exceptions
+│   ├── documents/              # Document upload API & ingestion orchestration
+│   ├── agents/                 # LangGraph agent, API router, retrievers, rerankers
+│   │   ├── nodes/
+│   │   ├── retrievers/
+│   │   └── rerankers/
+│   ├── storage/                # Supabase / storage adapters
+│   ├── embeddings/             # Embedding generation
+│   ├── extractors/             # PDF, DOCX, XLSX extraction
+│   ├── chunking/               # Legal-oriented chunking service
+│   └── graph/                  # Graph RAG hooks (evolving)
+├── frontend/                   # Streamlit UI (pages under frontend/pages/)
+├── .specs/                     # Specifications & planning
+│   └── features/
+├── pyproject.toml
 └── README.md
 ```
 
@@ -172,12 +180,22 @@ Optimized for legal document structure:
 uv run pytest
 ```
 
+(Add tests under a `tests/` package when introduced; the layout above keeps imports stable as `src.*`.)
+
+### Linting
+
+```bash
+uv run ruff check --fix src
+uv run ruff format src
+```
+
 ### Code Standards
 
 - Type hints required for all public functions
 - Pydantic schemas for structured LLM outputs
 - Registry pattern for LLM/Retriever access
 - Async operations for parallel processing
+- Cross-domain imports use explicit module paths (see examples under **Project Structure**)
 
 ## References
 

@@ -892,10 +892,10 @@ ls -la src/
 - Skill: NONE
 
 **Done when**:
-- [ ] Seção "Project Structure" atualizada
-- [ ] Explicação da organização por domínio
-- [ ] Exemplos de imports: `from src.documents import service as documents_service`
-- [ ] Instruções de execução atualizadas
+- [x] Seção "Project Structure" atualizada
+- [x] Explicação da organização por domínio
+- [x] Exemplos de imports: `from src.documents import service as documents_service`
+- [x] Instruções de execução atualizadas
 
 **Tests**: none  
 **Gate**: build  

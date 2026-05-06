@@ -1,173 +1,173 @@
-# Especificação: Refatoração para Padrões FastAPI
+# Specification: Refactor to FastAPI Standards
 
 ## Problem Statement
 
-O projeto atual possui uma estrutura organizada por tipo de arquivo (api/, services/, my_agent/) que funciona, mas não segue as melhores práticas do FastAPI para projetos em escala. A manutenção e evolução do código estão ficando mais difíceis à medida que o projeto cresce.
+The project currently follows a structure organized by file type (`api/`, `services/`, `my_agent/`) that works, but does not follow FastAPI best practices for projects at scale. Maintaining and evolving the code is becoming harder as the project grows.
 
-Problemas identificados:
-- Estrutura não organizada por domínio (bounded contexts)
-- Uso de `Depends()` no formato legado (default-arg) ao invés de `Annotated[T, Depends(...)]`
-- Configuração centralizada em um único arquivo ao invés de `BaseSettings` por domínio
-- Possíveis imports não explícitos entre domínios
-- Falta de convenções de naming para SQLAlchemy
-- Estrutura de imports não segue o padrão `from src.auth import service as auth_service`
+Identified issues:
+- Structure not organized by domain (bounded contexts)
+- Use of legacy `Depends()` (default-arg form) instead of `Annotated[T, Depends(...)]`
+- Configuration centralized in a single file instead of `BaseSettings` per domain
+- Possibly non-explicit imports across domains
+- Lack of naming conventions for SQLAlchemy
+- Import structure does not follow the pattern `from src.auth import service as auth_service`
 
 ## Goals
 
-- [ ] Reorganizar projeto em estrutura por domínio (`src/{domain}/`)
-- [ ] Modernizar uso de dependências para padrão `Annotated[T, Depends(...)]`
-- [ ] Implementar `BaseSettings` por domínio
-- [ ] Aplicar convenções de naming SQLAlchemy
-- [ ] Garantir async/await correto em todas as rotas
-- [ ] Padronizar imports cross-domain
-- [ ] Manter 100% de compatibilidade funcional (nenhum comportamento alterado)
+- [ ] Reorganize the project into a domain structure (`src/{domain}/`)
+- [ ] Modernize dependency injection to `Annotated[T, Depends(...)]`
+- [ ] Implement `BaseSettings` per domain
+- [ ] Apply SQLAlchemy naming conventions
+- [ ] Ensure correct async/await usage across routes
+- [ ] Standardize cross-domain imports
+- [ ] Maintain 100% functional compatibility (no behavior changes)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Mudança de tecnologia (trocar FastAPI, banco, etc) | Refatoração estrutural apenas |
-| Adicionar novas funcionalidades | Manter escopo apenas em reorganização |
-| Alterar lógica de negócio | Manter comportamento idêntico |
-| Otimização de performance | Foco em estrutura, não performance |
-| Documentação de API além do padrão FastAPI | Usar OpenAPI automático |
+| Technology changes (switching FastAPI, database, etc.) | Structural refactor only |
+| Adding new features | Scope limited to reorganization |
+| Changing business logic | Behavior must stay identical |
+| Performance optimization | Focus on structure, not performance |
+| API documentation beyond FastAPI defaults | Rely on automatic OpenAPI |
 
 ---
 
 ## User Stories
 
-### P1: Reestruturação por Domínio (Bounded Contexts) ⭐ MVP
+### P1: Restructure by Domain (Bounded Contexts) ⭐ MVP
 
-**User Story**: Como desenvolvedor, quero que o código seja organizado por domínio de negócio para facilitar manutenção e onboarding.
+**User Story**: As a developer, I want code organized by business domain to simplify maintenance and onboarding.
 
-**Why P1**: A estrutura atual mistura responsabilidades. Separar por domínio (documents, agents, storage, embeddings, etc) torna o código mais coeso.
+**Why P1**: The current structure mixes responsibilities. Splitting by domain (documents, agents, storage, embeddings, etc.) makes the codebase more cohesive.
 
 **Acceptance Criteria**:
 
-1. WHEN o projeto for reestruturado THEN cada domínio SHALL ter sua própria pasta em `src/{domain}/`
-2. WHEN um domínio for criado THEN ele SHALL conter: `router.py`, `schemas.py`, `service.py`, `dependencies.py`, `config.py`, `constants.py`, `exceptions.py`
-3. WHEN os domínios forem definidos THEN eles SHALL ser: `documents`, `agents`, `storage`, `embeddings`, `chunking`, `extractors`, `graph`, `common` (shared)
-4. WHEN houver código compartilhado THEN ele SHALL ficar em `src/common/` (database, config global, base models)
-5. WHEN o projeto for executado após refatoração THEN todos os endpoints SHALL responder identicamente à versão anterior
+1. WHEN the project is restructured THEN each domain SHALL have its own folder under `src/{domain}/`
+2. WHEN a domain is created THEN it SHALL contain: `router.py`, `schemas.py`, `service.py`, `dependencies.py`, `config.py`, `constants.py`, `exceptions.py`
+3. WHEN domains are defined THEN they SHALL be: `documents`, `agents`, `storage`, `embeddings`, `chunking`, `extractors`, `graph`, `common` (shared)
+4. WHEN there is shared code THEN it SHALL live in `src/common/` (database, global config, base models)
+5. WHEN the project runs after refactoring THEN all endpoints SHALL behave identically to the previous version
 
-**Independent Test**: Subir a aplicação e verificar que `/health`, `/api/v1/documents/*` funcionam; verificar que documentos podem ser uploadados e processados.
+**Independent Test**: Run the application and verify `/health`, `/api/v1/documents/*` work; verify documents can be uploaded and processed.
 
 ---
 
-### P1: Modernização de Dependências FastAPI ⭐ MVP
+### P1: Modern FastAPI Dependencies ⭐ MVP
 
-**User Story**: Como desenvolvedor, quero usar o padrão moderno de injeção de dependências para evitar bugs com defaults.
+**User Story**: As a developer, I want modern dependency injection to avoid bugs with default values.
 
-**Why P1**: O padrão `def func(dep = Depends(x))` é legado e tem problemas com valores default. O padrão `Annotated[T, Depends(x)]` é o idioma moderno FastAPI 0.95+.
+**Why P1**: The pattern `def func(dep = Depends(x))` is legacy and has issues with default values. `Annotated[T, Depends(x)]` is the modern FastAPI 0.95+ idiom.
 
 **Acceptance Criteria**:
 
-1. WHEN houver injeção de dependência THEN ela SHALL usar `Annotated[T, Depends(...)]` format
-2. WHEN houver dependency aliases THEN eles SHALL seguir padrão `PostDep = Annotated[dict, Depends(valid_post_id)]`
-3. WHEN uma rota precisar de dependência THEN não SHALL haver uso de `= Depends(...)` como default argument
-4. WHEN todas as rotas forem atualizadas THEN nenhuma rota SHALL usar o formato legado
+1. WHEN dependency injection is used THEN it SHALL use `Annotated[T, Depends(...)]`
+2. WHEN dependency aliases exist THEN they SHALL follow `PostDep = Annotated[dict, Depends(valid_post_id)]`
+3. WHEN a route needs a dependency THEN there SHALL be no `= Depends(...)` as a default argument
+4. WHEN all routes are updated THEN no route SHALL use the legacy form
 
-**Independent Test**: Verificar que todas as rotas em `src/documents/router.py` usam `Annotated`; verificar que `ruff` não reporta patterns legados.
+**Independent Test**: Verify all routes in `src/documents/router.py` use `Annotated`; verify `ruff` does not report legacy patterns.
 
 ---
 
-### P1: BaseSettings por Domínio ⭐ MVP
+### P1: BaseSettings per Domain ⭐ MVP
 
-**User Story**: Como desenvolvedor, quero que cada domínio tenha suas próprias configurações isoladas para melhor coesão.
+**User Story**: As a developer, I want each domain to have isolated settings for better cohesion.
 
-**Why P1**: Uma configuração global enorme viola o princípio de responsabilidade única. Cada domínio deve gerenciar apenas suas variáveis.
+**Why P1**: A single huge global configuration violates single responsibility. Each domain should manage only its own variables.
 
 **Acceptance Criteria**:
 
-1. WHEN um domínio precisar de config THEN ele SHALL ter seu próprio `config.py` com `BaseSettings`
-2. WHEN houver variável específica de domínio THEN ela SHALL estar no `BaseSettings` daquele domínio
-3. WHEN houver config global THEN ela SHALL ficar em `src/common/config.py`
-4. WHEN as configs forem acessadas THEN o padrão SHALL ser `{domain}_settings = {Domain}Config()`
-5. WHEN variáveis de ambiente forem carregadas THEN elas SHALL respeitar `env_prefix` por domínio (ex: `DOCUMENTS_`, `AGENTS_`, `STORAGE_`)
+1. WHEN a domain needs configuration THEN it SHALL have its own `config.py` with `BaseSettings`
+2. WHEN there is a domain-specific variable THEN it SHALL live in that domain’s `BaseSettings`
+3. WHEN there is global configuration THEN it SHALL live in `src/common/config.py`
+4. WHEN configs are accessed THEN the pattern SHALL be `{domain}_settings = {Domain}Config()`
+5. WHEN environment variables are loaded THEN they SHALL respect per-domain `env_prefix` (e.g. `DOCUMENTS_`, `AGENTS_`, `STORAGE_`)
 
-**Independent Test**: Cada config pode ser instanciada isoladamente; variáveis de ambiente com prefixos corretos são lidas.
+**Independent Test**: Each config can be instantiated in isolation; env vars with correct prefixes are read.
 
 ---
 
-### P1: Convenções SQLAlchemy e Naming ⭐ MVP
+### P1: SQLAlchemy Conventions and Naming ⭐ MVP
 
-**User Story**: Como desenvolvedor, quero convenções claras de naming para banco de dados para facilitar manutenção.
+**User Story**: As a developer, I want clear database naming conventions for easier maintenance.
 
-**Why P1**: Nomes inconsistentes dificultam queries manuais e entendimento do schema.
+**Why P1**: Inconsistent names make manual queries and schema understanding harder.
 
 **Acceptance Criteria**:
 
-1. WHEN tabelas forem criadas THEN elas SHALL usar `lower_case_snake` e singular (ex: `document`, `chunk`)
-2. WHEN houver FKs THEN elas SHALL ter nome consistente (ex: `document_id` em todas as tabelas)
-3. WHEN houver timestamps THEN eles SHALL usar sufixo `_at` (ex: `created_at`, `updated_at`)
-4. WHEN houver datas (sem hora) THEN elas SHALL usar sufixo `_date`
-5. WHEN metadata SQLAlchemy for configurado THEN ele SHALL usar `POSTGRES_INDEXES_NAMING_CONVENTION`
-6. WHEN índices forem criados THEN eles SHALL seguir o padrão: `ix: %(column_0_label)s_idx`, `uq: %(table_name)s_%(column_0_name)s_key`
+1. WHEN tables are created THEN they SHALL use `lower_case_snake` and singular names (e.g. `document`, `chunk`)
+2. WHEN there are FKs THEN they SHALL use consistent names (e.g. `document_id` everywhere)
+3. WHEN there are timestamps THEN they SHALL use the `_at` suffix (e.g. `created_at`, `updated_at`)
+4. WHEN there are dates (no time component) THEN they SHALL use the `_date` suffix
+5. WHEN SQLAlchemy metadata is configured THEN it SHALL use `POSTGRES_INDEXES_NAMING_CONVENTION`
+6. WHEN indexes are created THEN they SHALL follow: `ix: %(column_0_label)s_idx`, `uq: %(table_name)s_%(column_0_name)s_key`
 
-**Independent Test**: Verificar schema gerado tem naming consistente; índices seguem convenção.
+**Independent Test**: Verify generated schema naming is consistent; indexes follow the convention.
 
 ---
 
-### P2: Async Patterns Corretos
+### P2: Correct Async Patterns
 
-**User Story**: Como desenvolvedor, quero garantir que código async não bloqueie o event loop.
+**User Story**: As a developer, I want async code not to block the event loop.
 
-**Why P2**: Código async com chamadas bloqueantes (time.sleep, requests.get, etc) dentro de `async def` congela todo o event loop.
+**Why P2**: Async code with blocking calls (`time.sleep`, `requests.get`, etc.) inside `async def` freezes the entire event loop.
 
 **Acceptance Criteria**:
 
-1. WHEN uma rota fizer I/O não-bloqueante THEN ela SHALL usar `async def` + `await`
-2. WHEN uma rota fizer I/O bloqueante (sem cliente async) THEN ela SHALL usar `def` (sync, roda em threadpool)
-3. WHEN houver mix de I/O THEN a rota SHALL usar `async def` + `run_in_threadpool` para parte bloqueante
-4. WHEN não houver I/O (apenas CPU leve) THEN a rota pode usar `def` ou `async def`
-5. WHEN houver chamada sync dentro de async THEN ela SHALL usar `await run_in_threadpool(fn, *args)`
+1. WHEN a route performs non-blocking I/O THEN it SHALL use `async def` + `await`
+2. WHEN a route performs blocking I/O (no async client) THEN it SHALL use `def` (sync, runs in threadpool)
+3. WHEN there is mixed I/O THEN the route SHALL use `async def` + `run_in_threadpool` for the blocking part
+4. WHEN there is no I/O (light CPU only) THEN the route may use `def` or `async def`
+5. WHEN a sync call runs inside async THEN it SHALL use `await run_in_threadpool(fn, *args)`
 
-**Independent Test**: Aplicação mantém throughput similar; não há chamadas bloqueantes dentro de `async def`.
+**Independent Test**: Application keeps similar throughput; no blocking calls inside `async def`.
 
 ---
 
-### P2: Padronização de Imports Cross-Domain
+### P2: Cross-Domain Import Standardization
 
-**User Story**: Como desenvolvedor, quero imports cross-domain explícitos para evitar circular dependencies.
+**User Story**: As a developer, I want explicit cross-domain imports to avoid circular dependencies.
 
-**Why P2**: Imports via deep paths (`from src.auth.service.user import ...`) criam acoplamento forte. O padrão do projeto é importar módulos completos.
+**Why P2**: Deep-path imports (`from src.auth.service.user import ...`) create tight coupling. The project pattern is to import whole modules.
 
 **Acceptance Criteria**:
 
-1. WHEN importar de outro domínio THEN o import SHALL ser `from src.{domain} import service as {domain}_service`
-2. WHEN importar constantes de outro domínio THEN o import SHALL ser `from src.{domain} import constants as {domain}_constants`
-3. WHEN importar schemas de outro domínio THEN o import SHALL ser `from src.{domain} import schemas as {domain}_schemas`
-4. WHEN houver import wildcard (`*`) THEN ele SHALL ser removido (exceto em `__init__.py` de propósito)
-5. WHEN houver import absoluto de arquivo específico THEN ele SHALL ser convertido para import de módulo
+1. WHEN importing from another domain THEN the import SHALL be `from src.{domain} import service as {domain}_service`
+2. WHEN importing constants from another domain THEN the import SHALL be `from src.{domain} import constants as {domain}_constants`
+3. WHEN importing schemas from another domain THEN the import SHALL be `from src.{domain} import schemas as {domain}_schemas`
+4. WHEN there is a wildcard import (`*`) THEN it SHALL be removed (except deliberate `__init__.py` exports)
+5. WHEN there is an absolute import of a specific file THEN it SHALL be converted to a module import
 
-**Independent Test**: Não há imports do tipo `from src.x.y.z import specific_func`; todos usam alias de módulo.
+**Independent Test**: No imports like `from src.x.y.z import specific_func`; all use module aliases.
 
 ---
 
-### P3: Modernização Pydantic v2
+### P3: Pydantic v2 Modernization
 
-**User Story**: Como desenvolvedor, quero usar patterns Pydantic v2 modernos para evitar deprecations.
+**User Story**: As a developer, I want modern Pydantic v2 patterns to avoid deprecations.
 
-**Why P3**: `json_encoders` é deprecated em Pydantic v2. Usar `@field_serializer` é o padrão moderno.
+**Why P3**: `json_encoders` is deprecated in Pydantic v2. `@field_serializer` is the modern approach.
 
 **Acceptance Criteria**:
 
-1. WHEN houver `model_config = ConfigDict(json_encoders=...)` THEN ele SHALL ser convertido para `@field_serializer`
-2. WHEN houver serialização customizada de datetime THEN ela SHALL usar `@field_serializer` com `when_used="json"`
-3. WHEN houver `Field(ge=18, default=None)` THEN ele SHALL ser corrigido (contradiction entre constraint e default)
-4. WHEN todos os schemas forem verificados THEN nenhum SHALL usar API deprecated do Pydantic v1
+1. WHEN there is `model_config = ConfigDict(json_encoders=...)` THEN it SHALL be converted to `@field_serializer`
+2. WHEN there is custom datetime serialization THEN it SHALL use `@field_serializer` with `when_used="json"`
+3. WHEN there is `Field(ge=18, default=None)` THEN it SHALL be fixed (constraint vs default contradiction)
+4. WHEN all schemas are checked THEN none SHALL use deprecated Pydantic v1 APIs
 
-**Independent Test**: Pydantic não emite deprecation warnings; `ruff` não reporta issues de Pydantic.
+**Independent Test**: Pydantic emits no deprecation warnings; `ruff` reports no Pydantic issues.
 
 ---
 
 ## Edge Cases
 
-- WHEN um arquivo não couber em nenhum domínio claro THEN ele SHALL ir para `src/common/`
-- WHEN houver código morto (não importado por ninguém) durante refatoração THEN ele SHALL ser documentado e removido se confirmado
-- WHEN dois domínios precisarem compartilhar o mesmo modelo THEN o modelo SHALL ir para `src/common/schemas.py` ou `src/common/models.py`
-- WHEN uma dependência tiver cadeia complexa THEN a cadeia SHALL ser preservada com `Annotated` encadeado
-- WHEN um domínio tiver múltiplos sub-componentes (ex: agents com nodes, retrievers, rerankers) THEN eles SHALL ser sub-pastas do domínio
+- WHEN a file fits no clear domain THEN it SHALL go to `src/common/`
+- WHEN there is dead code (imported by nothing) during refactoring THEN it SHALL be documented and removed if confirmed
+- WHEN two domains share the same model THEN the model SHALL go to `src/common/schemas.py` or `src/common/models.py`
+- WHEN a dependency has a complex chain THEN the chain SHALL be preserved with chained `Annotated`
+- WHEN a domain has multiple sub-components (e.g. agents with nodes, retrievers, rerankers) THEN they SHALL be subfolders of the domain
 
 ---
 
@@ -175,40 +175,40 @@ Problemas identificados:
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----------- | ------ | ------ |
-| REFAC-01 | P1: Reestruturação por Domínio | Design | Pending |
-| REFAC-02 | P1: Reestruturação por Domínio | Design | Pending |
-| REFAC-03 | P1: Reestruturação por Domínio | Design | Pending |
-| REFAC-04 | P1: Reestruturação por Domínio | Design | Pending |
-| REFAC-05 | P1: Reestruturação por Domínio | Design | Pending |
-| REFAC-06 | P1: Modernização de Dependências | Design | Pending |
-| REFAC-07 | P1: Modernização de Dependências | Design | Pending |
-| REFAC-08 | P1: Modernização de Dependências | Design | Pending |
-| REFAC-09 | P1: Modernização de Dependências | Design | Pending |
-| REFAC-10 | P1: BaseSettings por Domínio | Design | Pending |
-| REFAC-11 | P1: BaseSettings por Domínio | Design | Pending |
-| REFAC-12 | P1: BaseSettings por Domínio | Design | Pending |
-| REFAC-13 | P1: BaseSettings por Domínio | Design | Pending |
-| REFAC-14 | P1: BaseSettings por Domínio | Design | Pending |
-| REFAC-15 | P1: Convenções SQLAlchemy | Design | Pending |
-| REFAC-16 | P1: Convenções SQLAlchemy | Design | Pending |
-| REFAC-17 | P1: Convenções SQLAlchemy | Design | Pending |
-| REFAC-18 | P1: Convenções SQLAlchemy | Design | Pending |
-| REFAC-19 | P1: Convenções SQLAlchemy | Design | Pending |
-| REFAC-20 | P1: Convenções SQLAlchemy | Design | Pending |
+| REFAC-01 | P1: Restructure by Domain | Design | Pending |
+| REFAC-02 | P1: Restructure by Domain | Design | Pending |
+| REFAC-03 | P1: Restructure by Domain | Design | Pending |
+| REFAC-04 | P1: Restructure by Domain | Design | Pending |
+| REFAC-05 | P1: Restructure by Domain | Design | Pending |
+| REFAC-06 | P1: Modern Dependencies | Design | Pending |
+| REFAC-07 | P1: Modern Dependencies | Design | Pending |
+| REFAC-08 | P1: Modern Dependencies | Design | Pending |
+| REFAC-09 | P1: Modern Dependencies | Design | Pending |
+| REFAC-10 | P1: BaseSettings per Domain | Design | Pending |
+| REFAC-11 | P1: BaseSettings per Domain | Design | Pending |
+| REFAC-12 | P1: BaseSettings per Domain | Design | Pending |
+| REFAC-13 | P1: BaseSettings per Domain | Design | Pending |
+| REFAC-14 | P1: BaseSettings per Domain | Design | Pending |
+| REFAC-15 | P1: SQLAlchemy Conventions | Design | Pending |
+| REFAC-16 | P1: SQLAlchemy Conventions | Design | Pending |
+| REFAC-17 | P1: SQLAlchemy Conventions | Design | Pending |
+| REFAC-18 | P1: SQLAlchemy Conventions | Design | Pending |
+| REFAC-19 | P1: SQLAlchemy Conventions | Design | Pending |
+| REFAC-20 | P1: SQLAlchemy Conventions | Design | Pending |
 | REFAC-21 | P2: Async Patterns | Design | Pending |
 | REFAC-22 | P2: Async Patterns | Design | Pending |
 | REFAC-23 | P2: Async Patterns | Design | Pending |
 | REFAC-24 | P2: Async Patterns | Design | Pending |
 | REFAC-25 | P2: Async Patterns | Design | Pending |
-| REFAC-26 | P2: Padronização de Imports | Design | Pending |
-| REFAC-27 | P2: Padronização de Imports | Design | Pending |
-| REFAC-28 | P2: Padronização de Imports | Design | Pending |
-| REFAC-29 | P2: Padronização de Imports | Design | Pending |
-| REFAC-30 | P2: Padronização de Imports | Design | Pending |
-| REFAC-31 | P3: Modernização Pydantic | Design | Pending |
-| REFAC-32 | P3: Modernização Pydantic | Design | Pending |
-| REFAC-33 | P3: Modernização Pydantic | Design | Pending |
-| REFAC-34 | P3: Modernização Pydantic | Design | Pending |
+| REFAC-26 | P2: Import Standardization | Design | Pending |
+| REFAC-27 | P2: Import Standardization | Design | Pending |
+| REFAC-28 | P2: Import Standardization | Design | Pending |
+| REFAC-29 | P2: Import Standardization | Design | Pending |
+| REFAC-30 | P2: Import Standardization | Design | Pending |
+| REFAC-31 | P3: Pydantic Modernization | Design | Pending |
+| REFAC-32 | P3: Pydantic Modernization | Design | Pending |
+| REFAC-33 | P3: Pydantic Modernization | Design | Pending |
+| REFAC-34 | P3: Pydantic Modernization | Design | Pending |
 
 **Coverage:** 34 total, 0 mapped to tasks, 34 unmapped
 
@@ -216,11 +216,11 @@ Problemas identificados:
 
 ## Success Criteria
 
-- [ ] Aplicação inicia sem erros com nova estrutura
-- [ ] Todos os endpoints documentados respondem identicamente
-- [ ] Upload de documentos funciona (fluxo end-to-end)
-- [ ] Processamento de documentos (chunking, embeddings) funciona
-- [ ] Consulta ao agente RAG retorna resultados equivalentes
-- [ ] `ruff check src` passa sem erros
-- [ ] Nenhum warning de deprecation do Pydantic
-- [ ] Testes (se existirem) passam
+- [ ] Application starts without errors with the new structure
+- [ ] All documented endpoints respond identically
+- [ ] Document upload works end-to-end
+- [ ] Document processing (chunking, embeddings) works
+- [ ] RAG agent queries return equivalent results
+- [ ] `ruff check src` passes with no errors
+- [ ] No Pydantic deprecation warnings
+- [ ] Tests (if any) pass

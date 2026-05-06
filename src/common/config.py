@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class CommonConfig(BaseSettings):
-    """Configurações compartilhadas entre domínios (ambiente, debug, logging)."""
+    """Shared settings across domains (environment, debug, logging)."""
 
     model_config = SettingsConfigDict(
         env_prefix="APP_",
@@ -20,5 +20,5 @@ class CommonConfig(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://localhost:5432/agentic_rag"
 
 
-# Instância singleton exportada
+# Exported singleton instance
 common_settings = CommonConfig()

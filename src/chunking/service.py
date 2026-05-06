@@ -17,7 +17,7 @@ class LegalChunk:
     Attributes:
         content: The chunk text content
         chunk_index: Sequential index within document
-        section_hint: Detected heading (e.g., 'Clause 12', 'Art. 5')
+        section_hint: Detected heading (e.g., 'Clause 12', 'Article 5')
         section_path: Hierarchy breadcrumbs
         page_start: Starting page number
         page_end: Ending page number

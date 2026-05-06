@@ -279,7 +279,7 @@ class LegalChunker:
         Regex patterns for:
         - ^\d+\.\s* (numbered sections)
         - Article\s+\d+|Art\.\s*\d+
-        - CLÁUSULA\s+\d+|CLAUSULA\s+\d+
+        - Clause\s+\d+
         - SECTION|CHAPTER|TITLE
         """
 
@@ -298,7 +298,7 @@ class LegalChunker:
 class LegalChunk:
     chunk_index: int           # Sequential within document
     content: str               # Chunk text
-    section_hint: str | None   # "Clause 12", "Art. 5"
+    section_hint: str | None   # e.g. "Clause 12", "Article 5"
     section_path: List[str]    # Hierarchy breadcrumbs
     page_start: int | None
     page_end: int | None

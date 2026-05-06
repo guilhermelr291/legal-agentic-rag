@@ -174,10 +174,10 @@ An additional indexing layer that builds a **graph** from document text:
 - Goal: preserve legal units and maintain traceability
 - Each chunk SHALL persist:
   - `chunk_index` (sequential)
-  - `section_hint` (e.g., “Clause 12”, “Art. 5”, “SECTION II”)
+  - `section_hint` (e.g., “Clause 12”, “Article 5”, “SECTION II”)
   - `section_path` (hierarchy, if detected)
   - `page_start/page_end` (if available)
-  - `anchors` (references detected, e.g., “Clause 10”, “Annex A”, “Art. 20”)
+  - `anchors` (references detected, e.g., “Clause 10”, “Annex A”, “Article 20”)
 
 ### Embeddings & Persistence
 
@@ -319,8 +319,8 @@ pages = loader.load()
 
 ### Chunking Strategy (Legal-First)
 
-1. Detect headings/titles (regex/heuristics):
-   - `^(?:\d+\.\s*|Article\s+\d+|Art\.\s*\d+|CLÁUSULA\s+\d+|CLAUSULA\s+\d+|SECTION|CHAPTER|TITLE)`
+1. Detect headings/titles (regex/heuristics), English-oriented markers only:
+   - `^(?:\d+\.\s*|Article\s+\d+|Art\.\s*\d+|Clause\s+\d+|SECTION|CHAPTER|TITLE)`
 
 2. Create chunks by section, keeping the heading as a prefix
 3. If chunk > 800 tokens: split by paragraph
@@ -328,7 +328,7 @@ pages = loader.load()
 5. Overlap: 50 tokens from the previous chunk
 6. `section_hint` = detected heading
 7. `section_path` = detected hierarchy (if available)
-8. `anchors` = detected references (Clause X / Art. Y / Annex Z)
+8. `anchors` = detected references (Clause X / Article Y / Annex Z)
 
 ### Embeddings
 

@@ -63,7 +63,7 @@ Do **not** assume a single global `get_settings()` for all domains; use the appr
 
 ## Language / comments
 
-- Some modules use **Portuguese** in docstrings or config comments (e.g. `CommonConfig`); APIs and most agent code are **English**. New code should match the file/domain tone or prefer English for public APIs.
+- **English only** for docstrings, comments, specs, and user-facing API messages unless an external spec mandates otherwise.
 
 ## Lint / format
 

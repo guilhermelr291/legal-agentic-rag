@@ -1,4 +1,4 @@
-# Refatoração para Padrões FastAPI - Design
+# Refactor to FastAPI Standards — Design
 
 **Spec**: `.specs/features/refactor-to-standards/spec.md`  
 **Status**: Draft
@@ -7,7 +7,7 @@
 
 ## Architecture Overview
 
-A arquitetura alvo segue o padrão **Domain-Driven Design** com organização por **Bounded Contexts**. Cada domínio é autônomo, com suas próprias configurações, schemas, serviços e dependências.
+The target architecture follows **Domain-Driven Design** with organization by **bounded contexts**. Each domain is autonomous, with its own configuration, schemas, services, and dependencies.
 
 ### Target Structure
 
@@ -98,23 +98,23 @@ src/
 
 | Current Location | Target Location | Notes |
 |-----------------|-----------------|-------|
-| `api/main.py` | `src/main.py` | Adaptar imports |
-| `api/models.py` | Split por domínio | `documents/schemas.py`, etc |
-| `api/routes/documents.py` | `src/documents/router.py` | Modernizar Depends |
-| `services/document_processor.py` | `src/documents/service.py` | Refatorar em serviços menores |
-| `services/db/repositories.py` | `src/documents/` + `src/common/` | Separar Document/Chunk |
-| `services/storage/supabase_client.py` | `src/storage/service.py` | Renomear para semanticamente correto |
-| `services/embeddings/generator.py` | `src/embeddings/service.py` | Renomear |
-| `services/chunking/legal_chunker.py` | `src/chunking/service.py` | Renomear |
-| `services/extractors/*.py` | `src/extractors/` | Manter estrutura |
-| `services/graph/*.py` | `src/graph/` | Manter estrutura |
-| `my_agent/*.py` | `src/agents/` | Renomear domínio |
-| `my_agent/nodes/` | `src/agents/nodes/` | Manter |
-| `my_agent/retrievers/` | `src/agents/retrievers/` | Manter |
-| `my_agent/rerankers/` | `src/agents/rerankers/` | Manter |
-| `my_agent/config/settings.py` | Split por domínio | Distribuir configs |
-| `frontend/` | Manter fora de `src/` | Frontend é separado |
-| `vector_store/` | Avaliar - pode ir para `src/agents/retrievers/` | Ou criar `src/vector_store/` |
+| `api/main.py` | `src/main.py` | Adapt imports |
+| `api/models.py` | Split by domain | `documents/schemas.py`, etc |
+| `api/routes/documents.py` | `src/documents/router.py` | Modernize Depends |
+| `services/document_processor.py` | `src/documents/service.py` | Refactor into smaller services |
+| `services/db/repositories.py` | `src/documents/` + `src/common/` | Split Document/Chunk |
+| `services/storage/supabase_client.py` | `src/storage/service.py` | Rename for semantic clarity |
+| `services/embeddings/generator.py` | `src/embeddings/service.py` | Rename |
+| `services/chunking/legal_chunker.py` | `src/chunking/service.py` | Rename |
+| `services/extractors/*.py` | `src/extractors/` | Keep structure |
+| `services/graph/*.py` | `src/graph/` | Keep structure |
+| `my_agent/*.py` | `src/agents/` | Rename domain |
+| `my_agent/nodes/` | `src/agents/nodes/` | Keep |
+| `my_agent/retrievers/` | `src/agents/retrievers/` | Keep |
+| `my_agent/rerankers/` | `src/agents/rerankers/` | Keep |
+| `my_agent/config/settings.py` | Split by domain | Distribute configs |
+| `frontend/` | Keep outside `src/` | Frontend is separate |
+| `vector_store/` | Evaluate — may move to `src/agents/retrievers/` | Or add `src/vector_store/` |
 
 ---
 
@@ -124,25 +124,25 @@ src/
 
 | Component | Current Location | Target Location | How to Use |
 |-----------|-----------------|-----------------|------------|
-| FastAPI app factory | `api/main.py` | `src/main.py` | Copiar e adaptar imports |
-| Document routes | `api/routes/documents.py` | `src/documents/router.py` | Refatorar para Annotated Depends |
-| Pydantic models | `api/models.py` | Split por domínio | Distribuir schemas apropriadamente |
-| Document processor | `services/document_processor.py` | `src/documents/service.py` | Refatorar, manter lógica |
-| Supabase client | `services/storage/supabase_client.py` | `src/storage/service.py` | Renomear, manter código |
-| Repositories | `services/db/repositories.py` | `src/documents/models.py` | Converter para SQLAlchemy models |
-| Embedding generator | `services/embeddings/generator.py` | `src/embeddings/service.py` | Renomear |
-| Legal chunker | `services/chunking/legal_chunker.py` | `src/chunking/service.py` | Renomear |
-| Extractors | `services/extractors/*.py` | `src/extractors/` | Manter, ajustar imports |
-| LangGraph agent | `my_agent/` | `src/agents/` | Renomear pasta, manter código |
+| FastAPI app factory | `api/main.py` | `src/main.py` | Copy and adapt imports |
+| Document routes | `api/routes/documents.py` | `src/documents/router.py` | Refactor to Annotated Depends |
+| Pydantic models | `api/models.py` | Split by domain | Distribute schemas appropriately |
+| Document processor | `services/document_processor.py` | `src/documents/service.py` | Refactor, keep logic |
+| Supabase client | `services/storage/supabase_client.py` | `src/storage/service.py` | Rename, keep code |
+| Repositories | `services/db/repositories.py` | `src/documents/models.py` | Convert to SQLAlchemy models |
+| Embedding generator | `services/embeddings/generator.py` | `src/embeddings/service.py` | Rename |
+| Legal chunker | `services/chunking/legal_chunker.py` | `src/chunking/service.py` | Rename |
+| Extractors | `services/extractors/*.py` | `src/extractors/` | Keep, adjust imports |
+| LangGraph agent | `my_agent/` | `src/agents/` | Rename folder, keep code |
 
 ### Integration Points
 
 | System | Integration Method |
 |--------|-------------------|
-| Supabase (DB + Storage) | Via `src/storage/service.py` - cliente async já existente |
-| OpenAI (Embeddings + LLM) | Via `src/embeddings/service.py` e `src/agents/` - já implementado |
-| FastAPI Router | Mount no `src/main.py` - padrão já existente |
-| Pydantic Settings | Novo - criar BaseSettings por domínio |
+| Supabase (DB + Storage) | Via `src/storage/service.py` — existing async client |
+| OpenAI (Embeddings + LLM) | Via `src/embeddings/service.py` and `src/agents/` — already implemented |
+| FastAPI Router | Mount in `src/main.py` — existing pattern |
+| Pydantic Settings | New — create BaseSettings per domain |
 
 ---
 
@@ -150,14 +150,14 @@ src/
 
 ### Common Domain (`src/common/`)
 
-**Purpose**: Infrastructure compartilhada entre domínios
+**Purpose**: Shared infrastructure across domains
 
 **Location**: `src/common/`
 
 **Components**:
-- `config.py`: `CommonConfig` com variáveis globais (ambiente, debug)
+- `config.py`: `CommonConfig` with global variables (environment, debug)
 - `database.py`: `create_async_engine`, `AsyncSession`, `get_db()`
-- `models.py`: `CustomModel` base com `@field_serializer` para datetimes
+- `models.py`: `CustomModel` base with `@field_serializer` for datetimes
 - `exceptions.py`: `BaseAppException`, `NotFoundError`, `ValidationError`
 - `dependencies.py`: `DbDep = Annotated[AsyncSession, Depends(get_db)]`
 
@@ -176,7 +176,7 @@ POSTGRES_INDEXES_NAMING_CONVENTION = {
 
 ### Documents Domain (`src/documents/`)
 
-**Purpose**: Gestão de documentos (upload, processamento, listagem, deleção)
+**Purpose**: Document lifecycle (upload, processing, listing, deletion)
 
 **Location**: `src/documents/`
 
@@ -250,7 +250,7 @@ class DocumentsConfig(BaseSettings):
 
 ### Agents Domain (`src/agents/`)
 
-**Purpose**: LangGraph RAG agent para consultas contextuais
+**Purpose**: LangGraph RAG agent for contextual queries
 
 **Location**: `src/agents/`
 
@@ -263,7 +263,7 @@ async def query_agent(
     agent: AgentDep,  # compiled graph from registry
 ) -> AgentQueryResponse: ...
 
-@router.get("/graph/status")  # se graph_rag habilitado
+@router.get("/graph/status")  # if graph_rag enabled
 async def get_graph_status(
     config: AgentsConfigDep,
 ) -> GraphStatusResponse: ...
@@ -294,13 +294,13 @@ class AgentsConfig(BaseSettings):
     TAVILY_API_KEY: str | None = None
 ```
 
-**Reuses**: Toda a estrutura existente de `my_agent/` migrada
+**Reuses**: Full existing `my_agent/` structure migrated
 
 ---
 
 ### Storage Domain (`src/storage/`)
 
-**Purpose**: Operações de storage Supabase (upload, download, delete)
+**Purpose**: Supabase storage operations (upload, download, delete)
 
 **Location**: `src/storage/`
 
@@ -349,13 +349,13 @@ class StorageConfig(BaseSettings):
     SUPABASE_STORAGE_BUCKET: str = "documents"
 ```
 
-**Reuses**: Código existente de `services/storage/supabase_client.py`
+**Reuses**: Existing code from `services/storage/supabase_client.py`
 
 ---
 
 ### Embeddings Domain (`src/embeddings/`)
 
-**Purpose**: Geração de embeddings OpenAI
+**Purpose**: OpenAI embedding generation
 
 **Location**: `src/embeddings/`
 
@@ -395,7 +395,7 @@ class EmbeddingsConfig(BaseSettings):
 
 ### Chunking Domain (`src/chunking/`)
 
-**Purpose**: Chunking estruturado de documentos jurídicos
+**Purpose**: Structured chunking for legal documents
 
 **Location**: `src/chunking/`
 
@@ -415,13 +415,13 @@ class ChunkingService:
 ChunkingDep = Annotated[ChunkingService, Depends(get_chunking_service)]
 ```
 
-**Reuses**: Código de `services/chunking/legal_chunker.py`
+**Reuses**: Code from `services/chunking/legal_chunker.py`
 
 ---
 
 ### Extractors Domain (`src/extractors/`)
 
-**Purpose**: Extração de texto de diferentes formatos de documento
+**Purpose**: Text extraction from multiple document formats
 
 **Location**: `src/extractors/`
 
@@ -441,13 +441,13 @@ class TextExtractor(ABC):
     async def extract(self, file_path: str) -> str: ...
 ```
 
-**Reuses**: Código de `services/extractors/*.py`
+**Reuses**: Code from `services/extractors/*.py`
 
 ---
 
 ### Graph Domain (`src/graph/`)
 
-**Purpose**: Graph RAG - extração e indexação de grafo de conhecimento
+**Purpose**: Graph RAG — knowledge graph extraction and indexing
 
 **Location**: `src/graph/`
 
@@ -467,7 +467,7 @@ class GraphService:
     ) -> None: ...
 ```
 
-**Reuses**: Código de `services/graph/*.py`
+**Reuses**: Code from `services/graph/*.py`
 
 ---
 
@@ -591,30 +591,30 @@ class DocumentListResponse(CustomModel):
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Estrutura de pastas | `src/{domain}/` | Padrão definido no `agentic-rag-standards.mdc` |
-| Dependências | `Annotated[T, Depends(...)]` | Padrão idiomatico FastAPI 0.95+, evita bugs com defaults |
-| Configuração | `BaseSettings` por domínio | Separação de concerns, cada domínio gerencia suas variáveis |
-| Env prefixes | `DOCUMENTS_`, `AGENTS_`, `STORAGE_`, etc | Evita colisão de nomes, clareza |
-| SQLAlchemy naming | `POSTGRES_INDEXES_NAMING_CONVENTION` | Consistência com schema PostgreSQL |
-| Pydantic base | `CustomModel` com `@field_serializer` | Padrão Pydantic v2, substitui `json_encoders` deprecated |
-| Async DB | `AsyncSession` + `async_sessionmaker` | Padrão SQLAlchemy 2.0 async |
-| Cross-domain imports | `from src.x import service as x_service` | Evita circular deps, clareza |
+| Folder layout | `src/{domain}/` | Defined in `agentic-rag-standards.mdc` |
+| Dependencies | `Annotated[T, Depends(...)]` | Idiomatic FastAPI 0.95+, avoids default-arg bugs |
+| Configuration | `BaseSettings` per domain | Separation of concerns; each domain owns its variables |
+| Env prefixes | `DOCUMENTS_`, `AGENTS_`, `STORAGE_`, etc | Avoids name collisions, clearer |
+| SQLAlchemy naming | `POSTGRES_INDEXES_NAMING_CONVENTION` | Consistency with PostgreSQL schema |
+| Pydantic base | `CustomModel` with `@field_serializer` | Pydantic v2 pattern; replaces deprecated `json_encoders` |
+| Async DB | `AsyncSession` + `async_sessionmaker` | SQLAlchemy 2.0 async standard |
+| Cross-domain imports | `from src.x import service as x_service` | Reduces circular deps, clearer |
 
 ---
 
 ## Migration Path
 
-A refatoração será feita em fases para minimizar risco:
+Refactoring proceeds in phases to minimize risk:
 
-1. **Fase 1**: Criar estrutura `src/` vazia com `__init__.py`
-2. **Fase 2**: Migrar `common/` (database, config, models base)
-3. **Fase 3**: Migrar `storage/` (serviço independente)
-4. **Fase 4**: Migrar `embeddings/` (serviço independente)
-5. **Fase 5**: Migrar `extractors/` e `chunking/` (serviços independentes)
-6. **Fase 6**: Migrar `documents/` (depende de storage, db, embeddings, chunking, extractors)
-7. **Fase 7**: Migrar `agents/` (depende de quase tudo)
-8. **Fase 8**: Migrar `graph/` (opcional)
-9. **Fase 9**: Atualizar `main.py` e testar end-to-end
-10. **Fase 10**: Limpar código antigo após validação
+1. **Phase 1**: Create empty `src/` layout with `__init__.py`
+2. **Phase 2**: Migrate `common/` (database, config, base models)
+3. **Phase 3**: Migrate `storage/` (standalone service)
+4. **Phase 4**: Migrate `embeddings/` (standalone service)
+5. **Phase 5**: Migrate `extractors/` and `chunking/` (standalone services)
+6. **Phase 6**: Migrate `documents/` (depends on storage, db, embeddings, chunking, extractors)
+7. **Phase 7**: Migrate `agents/` (depends on almost everything)
+8. **Phase 8**: Migrate `graph/` (optional)
+9. **Phase 9**: Update `main.py` and test end-to-end
+10. **Phase 10**: Remove legacy code after validation
 
-Cada fase é independente (pode ser testada) e builda sobre as anteriores.
+Each phase can be tested independently and builds on the previous ones.

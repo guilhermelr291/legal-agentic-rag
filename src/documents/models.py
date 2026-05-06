@@ -148,7 +148,7 @@ class Chunk(Base):
     section_hint: Mapped[str | None] = mapped_column(
         String,
         nullable=True,
-        comment="Detected heading (e.g., 'Clause 12', 'Art. 5')",
+        comment="Detected heading (e.g., 'Clause 12', 'Article 5')",
     )
     section_path: Mapped[list[str]] = mapped_column(
         ARRAY(String),

@@ -1,4 +1,4 @@
-# Refatoração para Padrões FastAPI - Tasks
+# Refactor to FastAPI Standards - Tasks
 
 **Design**: `.specs/features/refactor-to-standards/design.md`  
 **Status**: Draft
@@ -7,17 +7,17 @@
 
 ## Execution Plan
 
-### Phase 1: Estrutura Base e Common (Sequential)
+### Phase 1: Base Structure and Common (Sequential)
 
-Criar a estrutura `src/` e o domínio `common/` que outros domínios dependem.
+Create the `src/` layout and the `common/` domain that other domains depend on.
 
 ```
 T1 ──→ T2 ──→ T3 ──→ T4 ──→ T5
 ```
 
-### Phase 2: Domínios Independentes (Parallel OK)
+### Phase 2: Independent Domains (Parallel OK)
 
-Domínios que não dependem uns dos outros, apenas de `common`.
+Domains that do not depend on each other, only on `common`.
 
 ```
                     ┌→ T6 ──→ T7  [storage]
@@ -29,21 +29,21 @@ T5 complete, then:  ├→ T8 ──→ T9  [embeddings]
                     └→ T12 ─→ T13 [chunking]
 ```
 
-### Phase 3: Domínios Dependentes (Sequential)
+### Phase 3: Dependent Domains (Sequential)
 
-Domínios que dependem dos anteriores.
+Domains that depend on the ones above.
 
 ```
 T7, T9, T11, T13 complete, then:
 
-T14 ──→ T15 ──→ T16  [documents - router completo]
+T14 ──→ T15 ──→ T16  [documents - full router]
        │
-       └──→ T17 ──→ T18  [agents - graph completo]
+       └──→ T17 ──→ T18  [agents - full graph]
 ```
 
-### Phase 4: Main e Integração (Sequential)
+### Phase 4: Main and Integration (Sequential)
 
-Montar tudo no ponto de entrada.
+Wire everything at the application entrypoint.
 
 ```
 T18 complete, then:
@@ -53,7 +53,7 @@ T19 ──→ T20 ──→ T21
        └──→ T22 (parallel with T21)
 ```
 
-### Phase 5: Limpeza e Validação (Sequential)
+### Phase 5: Cleanup and Validation (Sequential)
 
 ```
 T21, T22 complete, then:
@@ -65,14 +65,14 @@ T23 ──→ T24
 
 ## Task Breakdown
 
-### Phase 1: Estrutura Base e Common
+### Phase 1: Base Structure and Common
 
-#### T1: Criar estrutura de pastas src/
+#### T1: Create src/ folder structure
 
-**What**: Criar toda a estrutura de diretórios vazia para `src/` com `__init__.py`  
-**Where**: `src/` (novo diretório raiz)  
+**What**: Create the full empty directory tree for `src/` with `__init__.py`  
+**Where**: `src/` (new root directory)  
 **Depends on**: None  
-**Reuses**: N/A (estrutura nova)  
+**Reuses**: N/A (new layout)  
 **Requirement**: REFAC-01
 
 **Tools**:
@@ -80,10 +80,10 @@ T23 ──→ T24
 - Skill: NONE
 
 **Done when**:
-- [ ] Diretório `src/` criado
-- [ ] Subdiretórios criados: `common/`, `documents/`, `agents/`, `agents/nodes/`, `agents/retrievers/`, `agents/rerankers/`, `storage/`, `embeddings/`, `extractors/`, `chunking/`, `graph/`
-- [ ] Arquivos `__init__.py` vazios em cada pasta
-- [ ] `main.py` vazio criado em `src/`
+- [ ] `src/` directory created
+- [ ] Subdirectories created: `common/`, `documents/`, `agents/`, `agents/nodes/`, `agents/retrievers/`, `agents/rerankers/`, `storage/`, `embeddings/`, `extractors/`, `chunking/`, `graph/`
+- [ ] Empty `__init__.py` files in each folder
+- [ ] Empty `main.py` created under `src/`
 
 **Tests**: none  
 **Gate**: build  
@@ -96,12 +96,12 @@ tree src/
 
 ---
 
-#### T2: Criar configuração global (common/config.py)
+#### T2: Create global configuration (common/config.py)
 
-**What**: Configurações compartilhadas entre domínios (ambiente, debug)  
+**What**: Shared settings across domains (environment, debug)  
 **Where**: `src/common/config.py`  
 **Depends on**: T1  
-**Reuses**: Código de `my_agent/config/settings.py` (variáveis globais)  
+**Reuses**: Code from `my_agent/config/settings.py` (global variables)  
 **Requirement**: REFAC-12
 
 **Tools**:
@@ -109,11 +109,11 @@ tree src/
 - Skill: NONE
 
 **Done when**:
-- [ ] `CommonConfig(BaseSettings)` criado
-- [ ] Variáveis: `ENVIRONMENT`, `DEBUG`, `LOG_LEVEL`
-- [ ] `env_prefix="APP_"` configurado
-- [ ] Instância `common_settings` exportada
-- [ ] Import funciona: `from src.common.config import common_settings`
+- [ ] `CommonConfig(BaseSettings)` created
+- [ ] Variables: `ENVIRONMENT`, `DEBUG`, `LOG_LEVEL`
+- [ ] `env_prefix="APP_"` configured
+- [ ] `common_settings` instance exported
+- [ ] Import works: `from src.common.config import common_settings`
 
 **Tests**: none  
 **Gate**: build  
@@ -125,12 +125,12 @@ cd src && python -c "from common.config import common_settings; print(common_set
 
 ---
 
-#### T3: Criar base de dados (common/database.py)
+#### T3: Create database layer (common/database.py)
 
-**What**: Configuração SQLAlchemy async com naming conventions  
+**What**: Async SQLAlchemy setup with naming conventions  
 **Where**: `src/common/database.py`  
 **Depends on**: T1, T2  
-**Reuses**: Padrões de `services/db/repositories.py` (conexão Supabase)  
+**Reuses**: Patterns from `services/db/repositories.py` (Supabase connection)  
 **Requirement**: REFAC-15, REFAC-19
 
 **Tools**:
@@ -138,10 +138,10 @@ cd src && python -c "from common.config import common_settings; print(common_set
 - Skill: NONE
 
 **Done when**:
-- [x] `POSTGRES_INDEXES_NAMING_CONVENTION` definido
-- [x] `metadata = MetaData(naming_convention=...)` criado
+- [x] `POSTGRES_INDEXES_NAMING_CONVENTION` defined
+- [x] `metadata = MetaData(naming_convention=...)` created
 - [x] `Base = declarative_base(metadata=metadata)`
-- [x] `create_async_engine` configurado com `pool_pre_ping=True`
+- [x] `create_async_engine` configured with `pool_pre_ping=True`
 - [x] `SessionFactory = async_sessionmaker(..., expire_on_commit=False)`
 - [x] `async def get_db() -> AsyncSession` dependency
 - [x] `DbDep = Annotated[AsyncSession, Depends(get_db)]` alias exportado
@@ -156,12 +156,12 @@ cd src && python -c "from common.database import Base, engine, SessionFactory, D
 
 ---
 
-#### T4: Criar modelos base Pydantic (common/models.py)
+#### T4: Create Pydantic base models (common/models.py)
 
-**What**: Base model com `@field_serializer` para datetimes  
+**What**: Base model with `@field_serializer` for datetimes  
 **Where**: `src/common/models.py`  
 **Depends on**: T1  
-**Reuses**: Padrão do standards (`@field_serializer` moderno)  
+**Reuses**: Standards pattern (modern `@field_serializer`)  
 **Requirement**: REFAC-31
 
 **Tools**:
@@ -169,11 +169,11 @@ cd src && python -c "from common.database import Base, engine, SessionFactory, D
 - Skill: NONE
 
 **Done when**:
-- [x] `CustomModel(BaseModel)` criado
+- [x] `CustomModel(BaseModel)` created
 - [x] `model_config = ConfigDict(populate_by_name=True)`
-- [x] `@field_serializer("*", when_used="json")` para datetimes
-- [x] Formato ISO: `%Y-%m-%dT%H:%M:%S%z`
-- [x] Timezone UTC aplicado se datetime for naive
+- [x] `@field_serializer("*", when_used="json")` for datetimes
+- [x] ISO format: `%Y-%m-%dT%H:%M:%S%z`
+- [x] UTC timezone applied if datetime is naive
 
 **Tests**: none  
 **Gate**: build  
@@ -195,12 +195,12 @@ print(t.model_dump_json())
 
 ---
 
-#### T5: Criar exceções globais (common/exceptions.py)
+#### T5: Create global exceptions (common/exceptions.py)
 
-**What**: Hierarquia de exceções da aplicação  
+**What**: Application exception hierarchy  
 **Where**: `src/common/exceptions.py`  
 **Depends on**: T1  
-**Reuses**: Padrões de `api/main.py` (exception handlers)  
+**Reuses**: Patterns from `api/main.py` (exception handlers)  
 **Requirement**: REFAC-01
 
 **Tools**:
@@ -208,13 +208,13 @@ print(t.model_dump_json())
 - Skill: NONE
 
 **Done when**:
-- [x] `BaseAppException(Exception)` criado
+- [x] `BaseAppException(Exception)` created
 - [x] `NotFoundError(BaseAppException)`
 - [x] `ValidationError(BaseAppException)`
 - [x] `UnauthorizedError(BaseAppException)`
 - [x] `StorageError(BaseAppException)`
 - [x] `ProcessingError(BaseAppException)`
-- [x] Cada exceção tem `message` e opcional `code`
+- [x] Each exception has `message` and optional `code`
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T5 - create global exceptions hierarchy`  
@@ -229,14 +229,14 @@ cd src && python -c "from common.exceptions import BaseAppException, NotFoundErr
 
 ---
 
-### Phase 2: Domínios Independentes
+### Phase 2: Independent Domains
 
-#### T6: Criar config storage (storage/config.py) [P]
+#### T6: Create storage config (storage/config.py) [P]
 
-**What**: BaseSettings para storage (Supabase)  
+**What**: BaseSettings for storage (Supabase)  
 **Where**: `src/storage/config.py`  
 **Depends on**: T5  
-**Reuses**: Variáveis de `my_agent/config/settings.py`  
+**Reuses**: Variables from `my_agent/config/settings.py`  
 **Requirement**: REFAC-10, REFAC-14
 
 **Tools**:
@@ -244,10 +244,10 @@ cd src && python -c "from common.exceptions import BaseAppException, NotFoundErr
 - Skill: NONE
 
 **Done when**:
-- [x] `StorageConfig(BaseSettings)` criado
+- [x] `StorageConfig(BaseSettings)` created
 - [x] `env_prefix="STORAGE_"`
-- [x] Variáveis: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_STORAGE_BUCKET`
-- [x] Instância `storage_settings` exportada
+- [x] Variables: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_STORAGE_BUCKET`
+- [x] `storage_settings` instance exported
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T6 - create storage config with BaseSettings`
@@ -262,12 +262,12 @@ cd src && python -c "from storage.config import storage_settings; print(storage_
 
 ---
 
-#### T7: Migrar serviço storage (storage/service.py)
+#### T7: Migrate storage service (storage/service.py)
 
-**What**: Mover e adaptar código de `services/storage/supabase_client.py`  
+**What**: Move and adapt code from `services/storage/supabase_client.py`  
 **Where**: `src/storage/service.py`  
 **Depends on**: T6  
-**Reuses**: Todo código de `services/storage/supabase_client.py`  
+**Reuses**: All code from `services/storage/supabase_client.py`  
 **Requirement**: REFAC-26, REFAC-27
 
 **Tools**:
@@ -275,12 +275,12 @@ cd src && python -c "from storage.config import storage_settings; print(storage_
 - Skill: NONE
 
 **Done when**:
-- [x] `StorageService` classe criada
-- [x] Métodos: `upload_file`, `download_file`, `delete_file`, `get_public_url`
-- [x] Usa `storage_settings` para configuração
-- [x] Async/await preservado
+- [x] `StorageService` class created
+- [x] Methods: `upload_file`, `download_file`, `delete_file`, `get_public_url`
+- [x] Uses `storage_settings` for configuration
+- [x] Async/await preserved
 - [x] `StorageDep = Annotated[StorageService, Depends(get_storage_service)]` em `dependencies.py`
-- [x] Não há imports circulares
+- [x] No circular imports
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T7 - migrate storage service from supabase_client`
@@ -295,12 +295,12 @@ cd src && python -c "from storage.service import StorageService; from storage.de
 
 ---
 
-#### T8: Criar config embeddings (embeddings/config.py) [P]
+#### T8: Create embeddings config (embeddings/config.py) [P]
 
-**What**: BaseSettings para embeddings (OpenAI)  
+**What**: BaseSettings for embeddings (OpenAI)  
 **Where**: `src/embeddings/config.py`  
 **Depends on**: T5  
-**Reuses**: Variáveis de `my_agent/config/settings.py`  
+**Reuses**: Variables from `my_agent/config/settings.py`  
 **Requirement**: REFAC-10, REFAC-14
 
 **Tools**:
@@ -308,9 +308,9 @@ cd src && python -c "from storage.service import StorageService; from storage.de
 - Skill: NONE
 
 **Done when**:
-- [x] `EmbeddingsConfig(BaseSettings)` criado
+- [x] `EmbeddingsConfig(BaseSettings)` created
 - [x] `env_prefix="EMBEDDINGS_"`
-- [x] Variáveis: `OPENAI_API_KEY`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `BATCH_SIZE`, `REQUEST_TIMEOUT`
+- [x] Variables: `OPENAI_API_KEY`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `BATCH_SIZE`, `REQUEST_TIMEOUT`
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T8 - create embeddings config with BaseSettings`
@@ -325,12 +325,12 @@ cd src && python -c "from embeddings.config import EmbeddingsConfig; c = Embeddi
 
 ---
 
-#### T9: Migrar serviço embeddings (embeddings/service.py)
+#### T9: Migrate embeddings service (embeddings/service.py)
 
-**What**: Mover código de `services/embeddings/generator.py`  
+**What**: Move code from `services/embeddings/generator.py`  
 **Where**: `src/embeddings/service.py`  
 **Depends on**: T8  
-**Reuses**: Código de `services/embeddings/generator.py`  
+**Reuses**: Code from `services/embeddings/generator.py`  
 **Requirement**: REFAC-26
 
 **Tools**:
@@ -338,10 +338,10 @@ cd src && python -c "from embeddings.config import EmbeddingsConfig; c = Embeddi
 - Skill: NONE
 
 **Done when**:
-- [x] `EmbeddingsService` classe criada
-- [x] Métodos: `generate_embeddings`, `generate_single`
-- [x] Usa `EmbeddingsConfig` para config
-- [x] Batch processing preservado
+- [x] `EmbeddingsService` class created
+- [x] Methods: `generate_embeddings`, `generate_single`
+- [x] Uses `EmbeddingsConfig` for configuration
+- [x] Batch processing preserved
 - [x] `EmbeddingsDep` em `dependencies.py`
 
 **Status**: ✅ Complete  
@@ -357,12 +357,12 @@ cd src && python -c "from embeddings.service import EmbeddingsService; from embe
 
 ---
 
-#### T10: Criar config extractors (extractors/config.py) [P]
+#### T10: Create extractors config (extractors/config.py) [P]
 
-**What**: Configuração para extractors (se necessário)  
+**What**: Configuration for extractors (if needed)  
 **Where**: `src/extractors/config.py`  
 **Depends on**: T5  
-**Reuses**: Padrão de outros domínios  
+**Reuses**: Pattern from other domains  
 **Requirement**: REFAC-10
 
 **Tools**:
@@ -370,8 +370,8 @@ cd src && python -c "from embeddings.service import EmbeddingsService; from embe
 - Skill: NONE
 
 **Done when**:
-- [x] `ExtractorsConfig(BaseSettings)` criado (minimal config)
-- [x] `env_prefix="EXTRACTORS_"` configurado
+- [x] `ExtractorsConfig(BaseSettings)` created (minimal config)
+- [x] `env_prefix="EXTRACTORS_"` configured
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T10 - create extractors config with BaseSettings`
@@ -386,12 +386,12 @@ cd src && python -c "from extractors.config import ExtractorsConfig; print('OK')
 
 ---
 
-#### T11: Migrar extractors (extractors/)
+#### T11: Migrate extractors (extractors/)
 
-**What**: Mover código de `services/extractors/*.py` para `src/extractors/`  
+**What**: Move code from `services/extractors/*.py` to `src/extractors/`  
 **Where**: `src/extractors/{base,pdf,docx,xlsx,service}.py`  
 **Depends on**: T10  
-**Reuses**: Todo código de `services/extractors/`  
+**Reuses**: All code from `services/extractors/`  
 **Requirement**: REFAC-26, REFAC-28
 
 **Tools**:
@@ -399,13 +399,13 @@ cd src && python -c "from extractors.config import ExtractorsConfig; print('OK')
 - Skill: NONE
 
 **Done when**:
-- [x] `base.py` com `TextExtractor` ABC
-- [x] `pdf.py` com `PDFExtractor`
-- [x] `docx.py` com `DOCXExtractor`
-- [x] `xlsx.py` com `XLSXMetadataExtractor`
-- [x] `service.py` com `ExtractionService` unificado
+- [x] `base.py` with `TextExtractor` ABC
+- [x] `pdf.py` with `PDFExtractor`
+- [x] `docx.py` with `DOCXExtractor`
+- [x] `xlsx.py` with `XLSXMetadataExtractor`
+- [x] `service.py` with unified `ExtractionService`
 - [x] `ExtractionDep` em `dependencies.py`
-- [x] Imports ajustados para novo path
+- [x] Imports adjusted for new paths
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T11 - migrate extractors domain`
@@ -420,12 +420,12 @@ cd src && python -c "from extractors.service import ExtractionService; from extr
 
 ---
 
-#### T12: Criar config chunking (chunking/config.py) [P]
+#### T12: Create chunking config (chunking/config.py) [P]
 
-**What**: Configuração para chunking  
+**What**: Configuration for chunking  
 **Where**: `src/chunking/config.py`  
 **Depends on**: T5  
-**Reuses**: Padrão de outros domínios  
+**Reuses**: Pattern from other domains  
 **Requirement**: REFAC-10
 
 **Tools**:
@@ -433,9 +433,9 @@ cd src && python -c "from extractors.service import ExtractionService; from extr
 - Skill: NONE
 
 **Done when**:
-- [x] `ChunkingConfig(BaseSettings)` criado
+- [x] `ChunkingConfig(BaseSettings)` created
 - [x] `env_prefix="CHUNKING_"`
-- [x] Variáveis: `DEFAULT_CHUNK_SIZE`, `DEFAULT_CHUNK_OVERLAP`
+- [x] Variables: `DEFAULT_CHUNK_SIZE`, `DEFAULT_CHUNK_OVERLAP`
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T12 - create chunking config with BaseSettings`
@@ -450,12 +450,12 @@ cd src && python -c "from chunking.config import ChunkingConfig; c = ChunkingCon
 
 ---
 
-#### T13: Migrar serviço chunking (chunking/service.py)
+#### T13: Migrate chunking service (chunking/service.py)
 
-**What**: Mover código de `services/chunking/legal_chunker.py`  
+**What**: Move code from `services/chunking/legal_chunker.py`  
 **Where**: `src/chunking/service.py`  
 **Depends on**: T12  
-**Reuses**: Código de `services/chunking/legal_chunker.py`  
+**Reuses**: Code from `services/chunking/legal_chunker.py`  
 **Requirement**: REFAC-26
 
 **Tools**:
@@ -463,12 +463,12 @@ cd src && python -c "from chunking.config import ChunkingConfig; c = ChunkingCon
 - Skill: NONE
 
 **Done when**:
-- [x] `ChunkingService` classe criada
-- [x] Métodos: `chunk()`, `chunk_document()`
-- [x] `LegalChunk` dataclass preservado
-- [x] Usa `ChunkingConfig` para defaults
+- [x] `ChunkingService` class created
+- [x] Methods: `chunk()`, `chunk_document()`
+- [x] `LegalChunk` dataclass preserved
+- [x] Uses `ChunkingConfig` for defaults
 - [x] `ChunkingDep` em `dependencies.py`
-- [x] Preserva lógica de chunking jurídico (heading patterns, anchor extraction)
+- [x] Preserves legal chunking logic (heading patterns, anchor extraction)
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T13 - migrate chunking service from legal_chunker`
@@ -483,14 +483,14 @@ cd src && python -c "from chunking.service import ChunkingService; from chunking
 
 ---
 
-### Phase 3: Domínios Dependentes
+### Phase 3: Dependent Domains
 
-#### T14: Criar config documents (documents/config.py)
+#### T14: Create documents config (documents/config.py)
 
-**What**: BaseSettings para documents  
+**What**: BaseSettings for documents  
 **Where**: `src/documents/config.py`  
 **Depends on**: T5  
-**Reuses**: Valores de hardcoded em rotas atuais  
+**Reuses**: Hardcoded values from current routes  
 **Requirement**: REFAC-10, REFAC-14
 
 **Tools**:
@@ -498,9 +498,9 @@ cd src && python -c "from chunking.service import ChunkingService; from chunking
 - Skill: NONE
 
 **Done when**:
-- [x] `DocumentsConfig(BaseSettings)` criado
+- [x] `DocumentsConfig(BaseSettings)` created
 - [x] `env_prefix="DOCUMENTS_"`
-- [x] Variáveis: `MAX_FILE_SIZE`, `ALLOWED_EXTENSIONS`, `PROCESSING_TIMEOUT_SECONDS`
+- [x] Variables: `MAX_FILE_SIZE`, `ALLOWED_EXTENSIONS`, `PROCESSING_TIMEOUT_SECONDS`
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T14 - create documents config with BaseSettings`
@@ -515,12 +515,12 @@ uv run python -c "from src.documents.config import DocumentsConfig, documents_se
 
 ---
 
-#### T15: Criar models SQLAlchemy documents (documents/models.py)
+#### T15: Create SQLAlchemy documents models (documents/models.py)
 
-**What**: SQLAlchemy ORM models para Document e Chunk  
+**What**: SQLAlchemy ORM models for Document and Chunk  
 **Where**: `src/documents/models.py`  
 **Depends on**: T3, T14  
-**Reuses**: Estrutura de `services/db/repositories.py` (classes Pydantic)  
+**Reuses**: Structure from `services/db/repositories.py` (Pydantic classes)  
 **Requirement**: REFAC-15, REFAC-16, REFAC-17, REFAC-18, REFAC-19, REFAC-20
 
 **Tools**:
@@ -528,13 +528,13 @@ uv run python -c "from src.documents.config import DocumentsConfig, documents_se
 - Skill: NONE
 
 **Done when**:
-- [x] `class Document(Base)` com todos os campos
-- [x] `class Chunk(Base)` com todos os campos
-- [x] Nomes de tabela em singular: `document`, `chunk`
+- [x] `class Document(Base)` with all fields
+- [x] `class Chunk(Base)` with all fields
+- [x] Singular table names: `document`, `chunk`
 - [x] FK: `chunk.document_id` → `document.id`
-- [x] Campos datetime com sufixo `_at`: `created_at`, `updated_at`, `processed_at`
-- [x] Índices: `user_id` indexado (RLS)
-- [x] Coluna `embedding` como `Vector(1536)` (pgvector)
+- [x] Datetime fields with `_at` suffix: `created_at`, `updated_at`, `processed_at`
+- [x] Indexes: `user_id` indexed (RLS)
+- [x] `embedding` column as `Vector(1536)` (pgvector)
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T15 - create SQLAlchemy models for documents domain`
@@ -549,12 +549,12 @@ python -c "import ast; tree = ast.parse(open('src/documents/models.py').read());
 
 ---
 
-#### T16: Migrar router documents com Annotated Depends (documents/router.py)
+#### T16: Migrate documents router with Annotated Depends (documents/router.py)
 
-**What**: Mover e modernizar rotas de `api/routes/documents.py`  
+**What**: Move and modernize routes from `api/routes/documents.py`  
 **Where**: `src/documents/router.py`  
 **Depends on**: T7, T9, T11, T13, T15  
-**Reuses**: Código de `api/routes/documents.py` e `services/document_processor.py`  
+**Reuses**: Code from `api/routes/documents.py` and `services/document_processor.py`  
 **Requirement**: REFAC-06, REFAC-07, REFAC-08, REFAC-09, REFAC-26, REFAC-27, REFAC-28, REFAC-29, REFAC-30
 
 **Tools**:
@@ -562,15 +562,15 @@ python -c "import ast; tree = ast.parse(open('src/documents/models.py').read());
 - Skill: NONE
 
 **Done when**:
-- [x] Router criado: `router = APIRouter(prefix="/documents", tags=["documents"])`
-- [x] `POST /upload` com `Annotated[..., Depends(...)]` para: `storage`, `db`, `background_tasks`
-- [x] `GET /{id}/status` com `DocumentDep` (dependency que valida e retorna doc)
-- [x] `GET /` com `DbDep`, paginação
-- [x] `DELETE /{id}` com `DocumentDep`, `StorageDep`
-- [x] Nenhuma rota usa `= Depends(...)` formato legado
+- [x] Router created: `router = APIRouter(prefix="/documents", tags=["documents"])`
+- [x] `POST /upload` with `Annotated[..., Depends(...)]` for: `storage`, `db`, `background_tasks`
+- [x] `GET /{id}/status` with `DocumentDep` (dependency that validates and returns doc)
+- [x] `GET /` with `DbDep`, pagination
+- [x] `DELETE /{id}` with `DocumentDep`, `StorageDep`
+- [x] No route uses legacy `= Depends(...)` form
 - [x] `DocumentDep = Annotated[Document, Depends(valid_document_id)]` em `dependencies.py`
-- [x] `valid_document_id` valida existência e ownership
-- [x] Todos os schemas usam `CustomModel` base
+- [x] `valid_document_id` validates existence and ownership
+- [x] All schemas use `CustomModel` base
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T16 - migrate documents router with Annotated Depends`
@@ -580,22 +580,22 @@ python -c "import ast; tree = ast.parse(open('src/documents/models.py').read());
 
 **Verify**:
 ```bash
-# Verificar formato Annotated
+# Check Annotated usage
 grep -n "Annotated\[" src/documents/router.py | head -5
-grep -n "= Depends" src/documents/router.py  # Deve retornar vazio ou só em Annotated
+grep -n "= Depends" src/documents/router.py  # Should be empty or only inside Annotated
 
-# Verificar schemas
+# Check schemas
 python -c "from documents.schemas import UploadResponse; from common.models import CustomModel; assert issubclass(UploadResponse, CustomModel)"
 ```
 
 ---
 
-#### T17: Criar schemas documents (documents/schemas.py)
+#### T17: Create documents schemas (documents/schemas.py)
 
-**What**: Pydantic schemas para request/response  
+**What**: Pydantic schemas for request/response  
 **Where**: `src/documents/schemas.py`  
 **Depends on**: T4, T14  
-**Reuses**: Modelos de `api/models.py`  
+**Reuses**: Models from `api/models.py`  
 **Requirement**: REFAC-31, REFAC-32
 
 **Tools**:
@@ -603,13 +603,13 @@ python -c "from documents.schemas import UploadResponse; from common.models impo
 - Skill: NONE
 
 **Done when**:
-- [x] `UploadResponse` herda de `CustomModel`
-- [x] `DocumentStatusResponse` com todos os campos
-- [x] `DocumentSummary` para listagem
-- [x] `DocumentListResponse` com paginação
-- [x] `ErrorResponse` para erros padronizados
-- [x] Nenhum uso de `json_encoders` (deprecated)
-- [x] Herda `@field_serializer` via `CustomModel` para datetimes
+- [x] `UploadResponse` inherits from `CustomModel`
+- [x] `DocumentStatusResponse` with all fields
+- [x] `DocumentSummary` for listing
+- [x] `DocumentListResponse` with pagination
+- [x] `ErrorResponse` for standardized errors
+- [x] No use of deprecated `json_encoders`
+- [x] Inherits `@field_serializer` via `CustomModel` for datetimes
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T17 - create documents schemas with CustomModel base`
@@ -624,12 +624,12 @@ cd src && python -c "from documents.schemas import UploadResponse, DocumentStatu
 
 ---
 
-#### T18: Migrar domínio agents (agents/)
+#### T18: Migrate agents domain (agents/)
 
-**What**: Mover e adaptar todo `my_agent/` para `src/agents/`  
-**Where**: `src/agents/` (todos os arquivos)  
-**Depends on**: T5, T16 (para patterns de router)  
-**Reuses**: Todo código de `my_agent/`  
+**What**: Move and adapt all of `my_agent/` to `src/agents/`  
+**Where**: `src/agents/` (all files)  
+**Depends on**: T5, T16 (for router patterns)  
+**Reuses**: All code from `my_agent/`  
 **Requirement**: REFAC-02, REFAC-06, REFAC-10, REFAC-26
 
 **Tools**:
@@ -637,15 +637,15 @@ cd src && python -c "from documents.schemas import UploadResponse, DocumentStatu
 - Skill: NONE
 
 **Done when**:
-- [x] `agents/config.py` com `AgentsConfig(BaseSettings)` (env_prefix="AGENTS_")
-- [x] `agents/router.py` com endpoints de query (se exposto via API)
-- [x] `agents/schemas.py` com request/response models
-- [x] `agents/graph.py`, `agents/state.py`, `agents/registry.py` migrados
-- [x] `agents/nodes/` todos os nodes migrados
-- [x] `agents/retrievers/` todos os retrievers migrados
-- [x] `agents/rerankers/` todos os rerankers migrados
-- [x] Imports atualizados para novo path
-- [x] Se houver API endpoints, usar `Annotated[...]` pattern
+- [x] `agents/config.py` with `AgentsConfig(BaseSettings)` (env_prefix="AGENTS_")
+- [x] `agents/router.py` with query endpoints (if exposed via API)
+- [x] `agents/schemas.py` with request/response models
+- [x] `agents/graph.py`, `agents/state.py`, `agents/registry.py` migrated
+- [x] `agents/nodes/` all nodes migrated
+- [x] `agents/retrievers/` all retrievers migrated
+- [x] `agents/rerankers/` all rerankers migrated
+- [x] Imports updated to new paths
+- [x] If API endpoints exist, use `Annotated[...]` pattern
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T18 - migrate agents domain from my_agent/`
@@ -660,14 +660,14 @@ cd src && python -c "from agents.graph import create_graph; from agents.config i
 
 ---
 
-### Phase 4: Main e Integração
+### Phase 4: Main and Integration
 
-#### T19: Criar main.py com lifespan e routers
+#### T19: Create main.py with lifespan and routers
 
-**What**: Ponto de entrada FastAPI com todos os routers  
+**What**: FastAPI entrypoint with all routers  
 **Where**: `src/main.py`  
 **Depends on**: T16, T18  
-**Reuses**: Código de `api/main.py` (adaptado)  
+**Reuses**: Code from `api/main.py` (adapted)  
 **Requirement**: REFAC-01
 
 **Tools**:
@@ -677,11 +677,11 @@ cd src && python -c "from agents.graph import create_graph; from agents.config i
 **Done when**:
 - [x] `create_app()` factory function
 - [x] Lifespan context manager (startup/shutdown)
-- [x] CORS middleware para Streamlit (port 8501)
+- [x] CORS middleware for Streamlit (port 8501)
 - [x] Include routers: `app.include_router(documents.router, prefix="/api/v1")`
 - [x] Health check endpoint: `GET /health`
-- [x] Global exception handlers usando `common.exceptions`
-- [x] `SHOW_DOCS_IN` logic para desabilitar docs em prod
+- [x] Global exception handlers using `common.exceptions`
+- [x] `SHOW_DOCS_IN` logic to disable docs in prod
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T19 - create main.py with lifespan and routers`
@@ -706,12 +706,12 @@ cd src && python -c "from main import create_app; app = create_app(); print('OK'
 
 ---
 
-#### T20: Criar pyproject.toml atualizado (ou requirements)
+#### T20: Create updated pyproject.toml (or requirements)
 
-**What**: Atualizar configuração de projeto para nova estrutura  
-**Where**: `pyproject.toml` (atualizar)  
+**What**: Update project configuration for the new layout  
+**Where**: `pyproject.toml` (update)  
 **Depends on**: T19  
-**Reuses**: `pyproject.toml` existente  
+**Reuses**: Existing `pyproject.toml`  
 **Requirement**: REFAC-01
 
 **Tools**:
@@ -719,8 +719,8 @@ cd src && python -c "from main import create_app; app = create_app(); print('OK'
 - Skill: NONE
 
 **Done when**:
-- [x] Seção `[tool.setuptools.packages.find]` aponta para `src`
-- [x] Imports funcionam: `from src.documents.router import router`
+- [x] `[tool.setuptools.packages.find]` section points to `src`
+- [x] Imports work: `from src.documents.router import router`
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T20 - update pyproject.toml for src structure`
@@ -750,12 +750,12 @@ python -c "from src.embeddings.service import EmbeddingsService; print('OK')"
 
 ---
 
-#### T21: Testar end-to-end upload de documento
+#### T21: Test end-to-end document upload
 
-**What**: Teste manual completo do fluxo de upload  
-**Where**: N/A (teste manual)  
+**What**: Full manual test of the upload flow  
+**Where**: N/A (manual test)  
 **Depends on**: T20  
-**Reuses**: Testes manuais existentes  
+**Reuses**: Existing manual tests  
 **Requirement**: REFAC-05 (Success Criteria)
 
 **Tools**:
@@ -763,12 +763,12 @@ python -c "from src.embeddings.service import EmbeddingsService; print('OK')"
 - Skill: NONE
 
 **Done when**:
-- [ ] API inicia sem erros: `python -m uvicorn src.main:app --reload`
-- [ ] `GET /health` retorna 200
-- [ ] `POST /api/v1/documents/upload` aceita PDF
-- [ ] Status retorna "processing" ou "ready"
-- [ ] Listagem funciona: `GET /api/v1/documents/`
-- [ ] Deleção funciona: `DELETE /api/v1/documents/{id}`
+- [ ] API starts without errors: `python -m uvicorn src.main:app --reload`
+- [ ] `GET /health` returns 200
+- [ ] `POST /api/v1/documents/upload` accepts PDF
+- [ ] Status returns "processing" or "ready"
+- [ ] Listing works: `GET /api/v1/documents/`
+- [ ] Deletion works: `DELETE /api/v1/documents/{id}`
 
 **Tests**: e2e  
 **Gate**: full  
@@ -786,10 +786,10 @@ curl http://localhost:8000/api/v1/documents/
 
 ---
 
-#### T22: Validar código com ruff (parallel com T21)
+#### T22: Validate code with ruff (parallel with T21)
 
-**What**: Linting com ruff para garantir padrões  
-**Where**: Todo `src/`  
+**What**: Lint with ruff to enforce standards  
+**Where**: All of `src/`  
 **Depends on**: T20  
 **Reuses**: N/A  
 **Requirement**: REFAC-06, REFAC-31
@@ -799,11 +799,11 @@ curl http://localhost:8000/api/v1/documents/
 - Skill: NONE
 
 **Done when**:
-- [x] `ruff check src` passa sem erros
-- [x] `ruff format src` aplicado
-- [x] Nenhum import não usado
-- [x] Nenhum padrão `= Depends(...)` legado detectado
-- [x] Nenhum `json_encoders` deprecated detectado
+- [x] `ruff check src` passes with no errors
+- [x] `ruff format src` applied
+- [x] No unused imports
+- [x] No legacy `= Depends(...)` pattern detected
+- [x] No deprecated `json_encoders` detected
 
 **Status**: ✅ Complete
 **Commit**: `feat(refactor): T22 - validate code with ruff linting and formatting`
@@ -832,14 +832,14 @@ ruff format src --check
 
 ---
 
-### Phase 5: Limpeza e Validação
+### Phase 5: Cleanup and Validation
 
-#### T23: Remover código antigo (backup first)
+#### T23: Remove legacy code (backup first)
 
-**What**: Remover pastas antigas após validação  
-**Where**: `api/`, `services/`, `my_agent/` (remover)  
+**What**: Remove legacy folders after validation  
+**Where**: `api/`, `services/`, `my_agent/` (remove)  
 **Depends on**: T21, T22  
-**Reuses**: N/A (limpeza)  
+**Reuses**: N/A (cleanup)  
 **Requirement**: REFAC-05
 
 **Tools**:
@@ -847,13 +847,13 @@ ruff format src --check
 - Skill: NONE
 
 **Done when**:
-- [x] Backup criado (ou commit git feito)
-- [x] `api/` removido (exceto se `frontend/` depender - verificar)
-- [x] `services/` removido
-- [x] `my_agent/` removido
-- [x] `vector_store/` avaliado (não usado - removido)
-- [x] `document_loaders/` avaliado (não usado - removido)
-- [x] Aplicação continua funcionando após remoção
+- [x] Backup created (or git commit made)
+- [x] `api/` removed (unless `frontend/` depends — verify)
+- [x] `services/` removed
+- [x] `my_agent/` removed
+- [x] `vector_store/` evaluated (unused — removed)
+- [x] `document_loaders/` evaluated (unused — removed)
+- [x] Application still works after removal
 
 **Status**: ✅ Complete  
 **Commit**: `feat(refactor): T23 - remove old code after validation`
@@ -870,21 +870,21 @@ ruff format src --check
 
 **Verify**:
 ```bash
-# Verificar que não há imports quebrados
+# Verify there are no broken imports
 python -c "from src.main import create_app; app = create_app(); print('OK')"
 
-# Verificar estrutura
+# Verify layout
 ls -la src/
 ```
 
 ---
 
-#### T24: Atualizar README com nova estrutura
+#### T24: Update README with new structure
 
-**What**: Documentar nova estrutura de projeto  
+**What**: Document the new project layout  
 **Where**: `README.md`  
 **Depends on**: T23  
-**Reuses**: README existente  
+**Reuses**: Existing README  
 **Requirement**: REFAC-01
 
 **Tools**:
@@ -892,10 +892,10 @@ ls -la src/
 - Skill: NONE
 
 **Done when**:
-- [x] Seção "Project Structure" atualizada
-- [x] Explicação da organização por domínio
-- [x] Exemplos de imports: `from src.documents import service as documents_service`
-- [x] Instruções de execução atualizadas
+- [x] "Project Structure" section updated
+- [x] Explanation of domain organization
+- [x] Import examples: `from src.documents import service as documents_service`
+- [x] Run instructions updated
 
 **Tests**: none  
 **Gate**: build  
@@ -913,7 +913,7 @@ cat README.md | grep -A 20 "Project Structure"
 Phase 1 (Sequential - Foundation):
   T1 ──→ T2 ──→ T3 ──→ T4 ──→ T5
        
-       Após T5 completo:
+       After T5 completes:
 
 Phase 2 (Parallel - Independent Domains):
                     ┌→ T6 ──→ T7  [storage]
@@ -924,21 +924,21 @@ Phase 2 (Parallel - Independent Domains):
                     │
                     └→ T12 ─→ T13 [chunking]
 
-       Após T7, T9, T11, T13 completos:
+       After T7, T9, T11, T13 complete:
 
 Phase 3 (Sequential - Dependent Domains):
   T14 ──→ T15 ──→ T16 ──→ T17
                  │
                  └──→ T18 [agents]
 
-       Após T17, T18 completos:
+       After T17, T18 complete:
 
 Phase 4 (Sequential + Parallel):
   T19 ──→ T20 ──→ T21 (end-to-end test)
                  │
-                 └──→ T22 [P] (ruff check - parallel com T21)
+                 └──→ T22 [P] (ruff check — parallel with T21)
 
-       Após T21, T22 completos:
+       After T21, T22 complete:
 
 Phase 5 (Sequential):
   T23 ──→ T24
@@ -950,30 +950,30 @@ Phase 5 (Sequential):
 
 | Task | Scope | Status |
 |------|-------|--------|
-| T1: Criar estrutura src/ | Múltiplas pastas (estrutura) | ⚠️ OK - estruturação inicial necessária |
-| T2: Common config | 1 arquivo | ✅ Granular |
-| T3: Database | 1 arquivo | ✅ Granular |
-| T4: Models base | 1 arquivo | ✅ Granular |
-| T5: Exceptions | 1 arquivo | ✅ Granular |
-| T6: Storage config | 1 arquivo | ✅ Granular |
-| T7: Storage service | 1 arquivo | ✅ Granular |
-| T8: Embeddings config | 1 arquivo | ✅ Granular |
-| T9: Embeddings service | 1 arquivo | ✅ Granular |
-| T10: Extractors config | 1 arquivo | ✅ Granular |
-| T11: Extractors migrate | Múltiplos arquivos | ⚠️ OK - domínio coeso |
-| T12: Chunking config | 1 arquivo | ✅ Granular |
-| T13: Chunking service | 1 arquivo | ✅ Granular |
-| T14: Documents config | 1 arquivo | ✅ Granular |
-| T15: Documents models | 1 arquivo | ✅ Granular |
-| T16: Documents router | 1 arquivo (complexo) | ⚠️ OK - router completo |
-| T17: Documents schemas | 1 arquivo | ✅ Granular |
-| T18: Agents migrate | Múltiplos arquivos | ⚠️ OK - domínio inteiro |
-| T19: Main app | 1 arquivo | ✅ Granular |
-| T20: pyproject.toml | 1 arquivo | ✅ Granular |
-| T21: E2E test | N/A (teste) | ✅ Granular |
+| T1: Create src/ structure | Multiple folders (layout) | ⚠️ OK — initial scaffolding needed |
+| T2: Common config | 1 file | ✅ Granular |
+| T3: Database | 1 file | ✅ Granular |
+| T4: Models base | 1 file | ✅ Granular |
+| T5: Exceptions | 1 file | ✅ Granular |
+| T6: Storage config | 1 file | ✅ Granular |
+| T7: Storage service | 1 file | ✅ Granular |
+| T8: Embeddings config | 1 file | ✅ Granular |
+| T9: Embeddings service | 1 file | ✅ Granular |
+| T10: Extractors config | 1 file | ✅ Granular |
+| T11: Extractors migrate | Multiple files | ⚠️ OK — cohesive domain |
+| T12: Chunking config | 1 file | ✅ Granular |
+| T13: Chunking service | 1 file | ✅ Granular |
+| T14: Documents config | 1 file | ✅ Granular |
+| T15: Documents models | 1 file | ✅ Granular |
+| T16: Documents router | 1 file (complex) | ⚠️ OK — full router |
+| T17: Documents schemas | 1 file | ✅ Granular |
+| T18: Agents migrate | Multiple files | ⚠️ OK — whole domain |
+| T19: Main app | 1 file | ✅ Granular |
+| T20: pyproject.toml | 1 file | ✅ Granular |
+| T21: E2E test | N/A (test) | ✅ Granular |
 | T22: Ruff check | N/A (check) | ✅ Granular |
 | T23: Cleanup | N/A (cleanup) | ✅ Granular |
-| T24: README | 1 arquivo | ✅ Granular |
+| T24: README | 1 file | ✅ Granular |
 
 ---
 
@@ -1022,18 +1022,18 @@ Phase 5 (Sequential):
 
 ## Commit Message Format
 
-Cada task deve ter um commit atômico:
+Each task should have one atomic commit:
 
 ```
-feat(refactor): T{N} - {descrição breve}
+feat(refactor): T{N} - {short description}
 
-- Detalhe 1
-- Detalhe 2
+- Detail 1
+- Detail 2
 
 Refs: REFAC-{XX}, REFAC-{YY}
 ```
 
-Exemplos:
+Examples:
 - `feat(refactor): T1 - create src/ directory structure`
 - `feat(refactor): T3 - add common/database.py with SQLAlchemy async`
 - `feat(refactor): T16 - migrate documents router with Annotated Depends`

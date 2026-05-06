@@ -1,141 +1,69 @@
-# Testing Patterns
+# Testing Infrastructure
 
-## Current State
+**Analyzed:** 2026-05-06
 
-**No tests are currently implemented.** This document outlines the testing strategy to be adopted.
+## Current state
 
-## Planned Testing Strategy
+| Item | Status |
+|------|--------|
+| `tests/` directory | **Absent** |
+| `pytest` in `pyproject.toml` | **Not declared** in `[project]` or `dev` group at analysis time |
+| CI workflow (e.g. GitHub Actions) | Not verified in this pass — add path if present |
 
-### Test Categories
+## Intended stack (recommended)
 
-| Category | Tool | Purpose |
-|----------|------|---------|
-| Unit Tests | pytest | Test individual nodes and functions |
-| Integration Tests | pytest | Test graph flows end-to-end |
-| RAG Evaluation | RAGAS | Measure retrieval and generation quality |
+| Layer | Tool | Notes |
+|-------|------|-------|
+| Unit / integration | pytest + pytest-asyncio | Async routes and SQLAlchemy async need asyncio mode |
+| HTTP | httpx `AsyncClient` + `ASGITransport` | Per workspace standards; target `src.main.app` |
+| Overrides | FastAPI `app.dependency_overrides` | Prefer over monkeypatching DB internals |
 
-### RAGAS Evaluation Plan (from to-do)
+## Test organization (proposed)
 
-Planned metrics for the evaluation pipeline:
-
-```python
-from ragas import evaluate
-from ragas.metrics import (
-    faithfulness,           # Is answer supported by context?
-    answer_relevancy,       # Is answer relevant to question?
-    context_precision,      # Are retrieved chunks relevant?
-    context_recall          # Were necessary chunks retrieved?
-)
-```
-
-### Ablations to Document
-
-Planned comparison of configurations:
-
-| Config | Dense | Lexical | Rerank |
-|--------|-------|---------|--------|
-| Baseline | ✅ | ❌ | ❌ |
-| + Lexical | ✅ | ✅ | ❌ |
-| + Rerank | ✅ | ❌ | ✅ |
-| Full System | ✅ | ✅ | ✅ |
-
-### Dataset Generation
-
-Synthetic dataset generation planned:
-
-```python
-# Generate Q&A pairs from legal documents
-prompt = """
-Given this legal document excerpt, generate 10 question-answer pairs.
-For each pair include: question, expected_answer, supporting_quotes.
-Return JSON only.
-"""
-```
-
-## Testing Conventions
-
-### Test File Structure (Proposed)
-
-```
+```text
 tests/
-├── __init__.py
-├── conftest.py              # Shared fixtures
+├── conftest.py
 ├── unit/
-│   ├── test_nodes.py        # Node unit tests
-│   ├── test_retrievers.py   # Retriever tests
-│   └── test_rerankers.py    # Reranker tests
-├── integration/
-│   └── test_graph.py        # Graph flow tests
-└── evaluation/
-    ├── test_ragas.py        # RAGAS metrics
-    └── fixtures/
-        └── dataset.json     # Synthetic Q&A pairs
+│   ├── test_retrievers_rrf.py
+│   └── test_storage_service.py   # mock Supabase client
+└── integration/
+    ├── test_health.py
+    ├── test_documents_upload.py  # test DB + mocked storage
+    └── test_agents_query.py      # mock graph or registry
 ```
 
-### Fixtures Needed
+## Test coverage matrix
 
-```python
-# conftest.py suggestions
+| Code layer | Test type | Location pattern | Run command |
+|------------|-----------|------------------|-------------|
+| FastAPI routers (`src/*/router.py`) | Integration (ASGI) | `tests/integration/test_*.py` | `pytest tests/integration` *(once added)* |
+| LangGraph nodes | Unit (mocked LLM/registry) | `tests/unit/test_nodes_*.py` | `pytest tests/unit` |
+| Retrieval / RRF | Unit (pure logic + fake docs) | `tests/unit/test_rrf.py` | `pytest tests/unit` |
+| Storage service | Unit (mock HTTP/client) | `tests/unit/test_storage.py` | `pytest tests/unit` |
+| SQLAlchemy models / migrations | Integration (real DB or testcontainers) | `tests/integration/test_db_*.py` | *(TBD)* |
 
-import pytest
-from my_agent.registry import set_llm, set_retriever, clear_registry
+Layers with **no tests today** — treat as **high risk** for regressions; see `CONCERNS.md`.
 
-@pytest.fixture(autouse=True)
-def reset_registry():
-    """Clear registry before each test."""
-    clear_registry()
-    yield
+## Parallelism assessment
 
-@pytest.fixture
-def mock_llm():
-    """Mock LLM for unit tests."""
-    # Use langchain's fake LLM or mock
-    pass
+| Test type | Parallel-safe? | Notes |
+|-----------|----------------|--------|
+| Future integration with shared `DATABASE_URL` | **Risky** without isolation | Use transactional rollbacks, per-test schema, or Testcontainers |
+| Unit tests with mocked I/O | **Yes** | No shared mutable global state |
 
-@pytest.fixture
-def mock_retriever():
-    """Mock retriever that returns fixed documents."""
-    pass
-```
+## Gate check commands
 
-## Gate Check Commands (Planned)
+| Gate | When | Command |
+|------|------|---------|
+| Lint | After any Python change | `uv run ruff check src` and `uv run ruff format src` *(or `python -m ruff`)* |
+| Quick | After adding tests | `pytest -q` *(once pytest is configured)* |
+| Full | Pre-release | Lint + tests + manual smoke against local API |
 
-```bash
-# Run unit tests
-pytest tests/unit/ -v
+*Extract exact commands from your Task runner / CI once added; do not assume `uv` is on PATH in all environments.*
 
-# Run integration tests
-pytest tests/integration/ -v
+## Known testing debt
 
-# Run RAGAS evaluation
-python -m evaluation.run_ragas
-
-# Coverage report
-pytest --cov=my_agent --cov-report=html
-```
-
-## Continuous Integration (Planned)
-
-```yaml
-# .github/workflows/test.yml (suggested)
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-      - run: pip install -e ".[dev]"
-      - run: pytest --cov=my_agent
-```
-
-## Known Testing Debt
-
-1. No unit tests for nodes
-2. No integration tests for graph flows
-3. No RAGAS evaluation setup
-4. No synthetic dataset created
-5. No mock/stub implementations for external APIs
+1. No automated regression suite for document upload pipeline.
+2. No tests for LangGraph branching (`router_node`, `should_continue`, web search fallback).
+3. No contract tests for Supabase Storage error mapping (`StorageError`).
+4. RAG quality (RAGAS) mentioned in README/plans — not wired in repo as executable tests.

@@ -1,188 +1,73 @@
 # External Integrations
 
-## Current Integrations
+**Analyzed:** 2026-05-06
 
-### 1. OpenAI
+## OpenAI
 
-**Purpose:** LLM provider for generation, routing, and query transformation
+**Purpose:** Chat models (routing, multi-query, grading, generation), embeddings for ingestion.
 
-**Configuration:**
-```python
-# settings.py
-openai_api_key: str
-openai_lightweight_model: str = "gpt-5-nano"  # For routing, grading
-openai_model_generation: str = "gpt-5-mini"   # For answer generation
-```
-
-**Usage:**
-```python
-from my_agent.registry import get_llm
-from my_agent.config.settings import get_settings
-
-# Lightweight tasks (routing, grading, query gen)
-llm = get_llm()  # gpt-5-nano
-
-# Generation
-settings = get_settings()
-llm = ChatOpenAI(model=settings.openai_model_generation)
-```
-
-**Nodes using:**
-- `router_node` - Structured output routing
-- `multi_query_generation_node` - Query generation
-- `documents_grader_node` - Relevance grading
-- `generate_answer_node` - Answer generation
-
-### 2. Tavily Search
-
-**Purpose:** Web search fallback for general knowledge queries
+**Implementation:** `src/agents/registry.py`, `src/agents/nodes/*`, `src/embeddings/service.py` (and related config).
 
 **Configuration:**
-```python
-# settings.py
-tavily_api_key: str | None = None
-tavily_max_results: int = 5
-```
+- Agent LLM: `AGENTS_OPENAI_API_KEY`, `AGENTS_OPENAI_LIGHTWEIGHT_MODEL`, `AGENTS_OPENAI_MODEL_GENERATION`, `AGENTS_OPENAI_EMBEDDING_MODEL` — `src/agents/config.py`.
+- Ingestion embeddings: `EMBEDDINGS_OPENAI_API_KEY`, `EMBEDDINGS_EMBEDDING_MODEL`, etc. — `src/embeddings/config.py`.
 
-**Usage:**
-```python
-from langchain_tavily import TavilySearch
-from my_agent.config.settings import get_settings
+**Authentication:** API key from environment; never hard-coded.
 
-settings = get_settings()
-tavily_tool = TavilySearch(max_results=settings.tavily_max_results)
-```
+## Tavily (web search)
 
-**Node:** `web_search_node`
+**Purpose:** Web search path when routing selects `web_search` or when graded documents are empty.
 
-**Flow:**
-```
-User question → LLM optimizes query → Tavily search → Documents to state
-```
+**Implementation:** `langchain-tavily` — `src/agents/nodes/web_search.py`.
 
-### 3. Cohere Rerank (Optional)
+**Configuration:** `src/agents/config.py` — env vars use prefix `AGENTS_` (e.g. `AGENTS_TAVILY_API_KEY`, `AGENTS_TAVILY_MAX_RESULTS`).
 
-**Purpose:** Document reranking for improved retrieval quality
+**Degradation:** Optional; vector-only flows work if Tavily is not configured (routing may still send traffic to web search — verify behavior when key missing).
 
-**Configuration:**
-```python
-# settings.py
-cohere_api_key: str | None = None
-cohere_rerank_model: str = "rerank-v3.5"
-rerank_top_k: int = 10
-```
+## Cohere (reranking)
 
-**Usage:**
-```python
-from my_agent.rerankers.cohere import CohereReranker
+**Purpose:** Rerank fused documents after retrieval.
 
-reranker = CohereReranker(api_key=settings.cohere_api_key)
-```
+**Implementation:** `src/agents/rerankers/cohere.py`; used from `src/agents/nodes/retrieval.py` with try/except / optional registry.
 
-**Graceful Degradation:**
-```python
-# retrieval_node.py
-try:
-    reranker = get_reranker()
-    fused = await reranker.arerank(user_query, fused, top_k=final_k)
-except RuntimeError:
-    # Reranker not configured, use simple slice
-    fused = fused[:final_k]
-```
+**Configuration:** `AGENTS_COHERE_API_KEY`, `AGENTS_COHERE_RERANK_MODEL`, `AGENTS_RERANK_TOP_K` (`src/agents/config.py`).
 
-**Node:** `retrieval_node`
+**Degradation:** **Yes** — retrieval can proceed without reranker.
 
-## Planned Integrations (from to-do)
+## Supabase
 
-### 4. Supabase
+**Purpose:**
 
-**Purpose:** Database, storage, and authentication
+- **Storage:** User uploads, bucket operations — `src/storage/service.py`, `src/storage/config.py`.
+- **Backend data:** Project direction is Postgres + pgvector via Supabase; app DB URL also supplied through `CommonConfig.DATABASE_URL` (async Postgres).
 
-**Components:**
-- **Postgres + pgvector:** Chunk storage and vector search
-- **Storage:** File storage for PDFs/DOCXs/XLSXs
-- **Auth:** JWT-based user authentication
-- **RLS:** Row-level security for data isolation
+**Configuration (storage domain):** `STORAGE_SUPABASE_URL`, `STORAGE_SUPABASE_SERVICE_KEY`, optional `STORAGE_SUPABASE_STORAGE_BUCKET` — `src/storage/config.py`.
 
-**Tables Planned:**
-- `documents` - File metadata
-- `chunks` - Document chunks with embeddings
-- `messages` - Chat history
-- `thread_summaries` - Conversation summaries
-- `user_preferences` - User preferences
-- `feedback` - Thumbs up/down feedback
+**Authentication:** Service role key for server-side Storage client (must not ship to frontend). Agents config also defines `AGENTS_SUPABASE_*` for non-storage Supabase use — confirm which module owns each concern when debugging env issues.
 
-**Environment Variables:**
-```
-SUPABASE_URL
-SUPABASE_SERVICE_ROLE_KEY
-SUPABASE_JWT_SECRET
-```
+**Python client:** `supabase` package with async client (imports guarded for version differences in `storage/service.py`).
 
-### 5. LangSmith
+## Postgres (SQLAlchemy)
 
-**Purpose:** Tracing and observability
+**Purpose:** Document metadata, processing status, and related application tables.
 
-**Configuration:**
-```python
-LANGCHAIN_API_KEY
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_PROJECT=legal-rag-portfolio
-```
+**Implementation:** `src/common/database.py`, ORM models e.g. `src/documents/models.py`.
 
-**Usage:**
-- Automatic tracing via LangGraph
-- Manual `trace_id` capture for feedback linking
+**Configuration:** Field `DATABASE_URL` on `CommonConfig` with `env_prefix="APP_"` → env var **`APP_DATABASE_URL`** (`src/common/config.py`).
 
-### 6. RAGAS
+## Planned / documentation-only
 
-**Purpose:** RAG evaluation framework
+| Item | Status |
+|------|--------|
+| LangSmith tracing | Named in README / plans — enable via LangChain env when adopted |
+| RAGAS | Evaluation — not integrated as runnable tests in repo |
 
-**Metrics:**
-- Faithfulness
-- Answer relevancy
-- Context precision
-- Context recall
+## Integration health summary
 
-## Integration Health
-
-| Integration | Status | Config Required | Graceful Degradation |
-|-------------|--------|-----------------|---------------------|
-| OpenAI | ✅ Required | `OPENAI_API_KEY` | No |
-| Tavily | ⚠️ Optional | `TAVILY_API_KEY` | Yes (vectorstore only) |
-| Cohere | ⚠️ Optional | `COHERE_API_KEY` | Yes (skip rerank) |
-| Supabase | 🔲 Planned | Multiple | TBD |
-| LangSmith | 🔲 Planned | `LANGCHAIN_API_KEY` | Yes |
-| RAGAS | 🔲 Planned | Dataset | N/A (eval only) |
-
-## Error Handling Patterns
-
-### Missing Optional Integration
-
-```python
-from my_agent.registry import get_reranker
-
-try:
-    reranker = get_reranker()
-except RuntimeError as e:
-    # Log and continue without reranking
-    logger.warning(f"Reranker not available: {e}")
-    reranker = None
-```
-
-### API Failures
-
-```python
-# In nodes, wrap external calls
-try:
-    results = await external_api_call()
-except ExternalAPIError as e:
-    # Return empty or fallback
-    return {"documents": []}
-```
-
-## Security Considerations
-
-1. **API Keys:** All keys stored in environment variables, never in code
-2. **Service Role Key:** Supabase service role key only on backend, never exposed to frontend
-3. **RLS:** All queries filtered by `auth.uid()` from JWT
+| Integration | Required? | Graceful without? |
+|-------------|-----------|-------------------|
+| OpenAI | Yes for agent + embeddings | No for full RAG |
+| Supabase Storage | Yes for upload API as implemented | Upload flows fail without credentials |
+| Postgres | Yes for document DB features | API paths using `DbDep` need DB |
+| Tavily | No | Partial (avoid web path or handle errors) |
+| Cohere | No | Yes |

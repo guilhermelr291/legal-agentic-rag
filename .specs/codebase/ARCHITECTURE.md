@@ -1,134 +1,77 @@
-# Architecture Overview
+# Architecture
 
-## System Context
+**Pattern:** Modular monolith — single FastAPI app + optional Streamlit frontend, domain packages under `src/`.
 
-This is an **Adaptive RAG (Retrieval-Augmented Generation)** system built with LangGraph. It dynamically routes queries between vectorstore retrieval and web search, with document grading and reranking.
+**Analyzed:** 2026-05-06
 
-## High-Level Flow
+## High-level structure
 
-```
-┌─────────┐     ┌─────────────┐     ┌──────────────────┐
-│  START  │────▶│ router_node  │────▶│ generate_queries │
-└─────────┘     └─────────────┘     └──────────────────┘
-                            │                  │
-                            ▼                  ▼
-                    ┌──────────────┐    ┌───────────┐
-                    │  web_search  │    │  retrieve  │
-                    └──────────────┘    └───────────┘
-                            │                  │
-                            └────────┬─────────┘
-                                     ▼
-                            ┌───────────────┐
-                            │  grade_docs   │───No docs?──▶ web_search
-                            └───────────────┘
-                                     │
-                                     ▼
-                            ┌───────────────┐
-                            │   generate    │
-                            └───────────────┘
-                                     │
-                                     ▼
-                                   [END]
+```text
+Client (Streamlit / HTTP) → FastAPI (`src/main.py`)
+    ├── /api/v1/documents → documents domain (DB + storage + pipeline)
+    └── /api/v1/agents   → LangGraph RAG (`create_graph()`)
+
+Shared: SQLAlchemy async (`src/common/database.py`), domain-specific settings, exception types.
 ```
 
-## Core Components
+## LangGraph RAG flow
 
-### 1. State Management (`state.py`)
+Defined in `src/agents/graph.py`:
 
-```python
-class GraphState(TypedDict):
-    messages: Annotated[list[AnyMessage], operator.add]
-    documents: List[str]
-    generation: str
-    queries_for_retrieval: List[str]
-```
+1. **START** → `router_node` (structured LLM route: `vectorstore` | `web_search`).
+2. **vectorstore** → `generate_queries` → `retrieve` → `grade_docs` → if no docs → `web_search`, else `generate` → **END**.
+3. **web_search** (from start or fallback) → `generate` → **END**.
 
-**Note:** Current state is minimal. The to-do list indicates a planned expansion:
-- `route`: Routing decision
-- `user_id`, `thread_id`: Session tracking
-- `doc_ids`: Document scope
-- `citations`: Source tracking
-- `chat_history`: Conversation memory
-- `trace_id`: Observability
+Router implementation (`src/agents/nodes/router.py`) returns a `Literal` for `add_conditional_edges` (no separate `MessagesState`; graph state is `GraphState` in `src/agents/state.py`).
 
-### 2. Registry Pattern (`registry.py`)
+## Identified patterns
 
-Uses Python `ContextVar` for dependency injection:
+### Domain-oriented packages
 
-- `get_llm()` / `set_llm()` - LLM access
-- `get_retriever()` / `set_retriever()` - Retriever access
-- `get_reranker()` / `set_reranker()` - Optional reranker
+**Location:** `src/{agents,documents,storage,...}/`  
+**Purpose:** Boundaries by feature; each area can expose `router.py`, `service.py`, `config.py`, `dependencies.py` where needed.  
+**Example:** `src/documents/router.py` uses `Annotated[..., Depends(...)]` for `DbDep`, `StorageDep`, `UserIdDep`.
 
-**Purpose:** Avoid direct instantiation in nodes; enable testing and configuration flexibility.
+### ContextVar registry for agent dependencies
 
-### 3. Graph Nodes
+**Location:** `src/agents/registry.py`  
+**Purpose:** `get_llm()` / `get_retriever()` / `get_reranker()` without wiring globals in every node; supports tests by swapping setters.  
+**Example:** Lifespan in `src/main.py` calls `init_default_llm()`.
 
-| Node | File | Purpose | Async |
-|------|------|---------|-------|
-| `router_node` | `nodes/router.py` | Routes to vectorstore or web_search | No |
-| `multi_query_generation_node` | `nodes/query_generation.py` | Generates 5 sub-queries for retrieval | No |
-| `retrieval_node` | `nodes/retrieval.py` | Hybrid retrieval + RRF + rerank | Yes |
-| `documents_grader_node` | `nodes/grading.py` | Filters irrelevant documents | Yes |
-| `generate_answer_node` | `nodes/generation.py` | Produces final answer | No |
-| `web_search_node` | `nodes/web_search.py` | Tavily web search fallback | No |
+### Hybrid retrieval and fusion
 
-### 4. Retriever System
+**Location:** `src/agents/retrievers/ensemble.py`, `src/agents/retrievers/rrf.py`  
+**Purpose:** Ensemble dense + lexical weights; Reciprocal Rank Fusion across multi-query results.  
+**Optional rerank:** `src/agents/rerankers/cohere.py` with degradation if no API key.
 
-**Base Class:** `retrievers/base.py`
-- Abstract `Retriever` with `retrieve()` and `batch_retrieve()` methods
+### Async Supabase storage service
 
-**Implementations:**
-- `EnsembleRetriever` - LangChain ensemble with configurable weights (0.7 dense / 0.3 BM25 default)
-- Factory functions for Chroma and BM25
+**Location:** `src/storage/service.py`  
+**Purpose:** Encapsulate `supabase` async client + bucket operations; map failures to `StorageError`.
 
-**Fusion:** `retrievers/rrf.py`
-- Reciprocal Rank Fusion (RRF) for merging multi-query results
-- Constant c=60 for smoothing
+### SQLAlchemy 2.0 async for application data
 
-### 5. Reranking (Optional)
+**Location:** `src/common/database.py`, `src/documents/models.py`  
+**Purpose:** Document metadata and processing state in Postgres (URL from `APP_DATABASE_URL` / `DATABASE_URL` in `CommonConfig`).
 
-**Base Class:** `rerankers/base.py`
-- Abstract `Reranker` with sync/async methods
+## Document ingestion (high level)
 
-**Implementation:** `rerankers/cohere.py`
-- Cohere Rerank API (model: rerank-v3.5)
-- Graceful degradation if not configured
+Upload API stores files via Supabase Storage and records metadata in the DB; background tasks drive extraction → chunking → embedding and vector persistence (details in `src/documents/service.py` and related packages). *Exact vector store wiring should be read from implementation when changing retrieval.*
 
-## Data Flow
+## Data flow: RAG query
 
-1. **Input:** User question via `messages` in state
-2. **Route:** LLM decides vectorstore vs web search
-3. **Query Generation:** LLM generates 5 diverse sub-queries
-4. **Retrieval:** 
-   - Batch retrieve with hybrid ensemble
-   - RRF fusion across queries
-   - Cohere rerank (if available)
-5. **Grading:** LLM filters irrelevant documents
-6. **Generation:** LLM produces cited answer
-7. **Output:** Response in `generation` field
+1. HTTP `POST /api/v1/agents/query` builds initial `GraphState` (messages + optional overrides per `src/agents/router.py`).
+2. Compiled graph runs nodes; retrieval uses registry-provided retriever; optional Cohere rerank.
+3. Response mapped to Pydantic `QueryResponse` with answer and sources.
 
-## Known Architectural Issues
+## Code organization
 
-1. **Router Double Execution:** The `router_node` is called directly in `add_conditional_edges`, which can execute it twice. The planned fix (Fase 0) is to have the node write to state and a separate function read the decision.
+| Approach | Description |
+|----------|-------------|
+| **Layout** | Domain folders under `src/`, not a single `my_agent` package |
+| **API** | Versioned prefix `/api/v1` in `main.py` |
+| **Config** | Split settings per domain + `src/common/config.py` for shared app/env |
 
-2. **State Mismatch:** Current `state.py` doesn't match the planned state in to-do list. The router expects `MessagesState` while the graph uses `GraphState`.
+## Historical note
 
-3. **Missing Async Consistency:** Some nodes are async, others sync - should standardize.
-
-## Planned Architecture (from to-do)
-
-```
-Streamlit UI ──▶ FastAPI ──▶ LangGraph Agent
-                  │              │
-                  ▼              ▼
-            Supabase (Auth, Storage, Postgres+pgvector)
-                  │
-                  ▼
-            LangSmith (Tracing)
-```
-
-Key planned additions:
-- **Memory Node:** Summarization every 4 messages
-- **Excel Tool:** Predefined operations on XLSX files
-- **Citation System:** Structured source tracking
-- **Feedback Loop:** Thumbs up/down with trace linking
+Older internal docs referenced `my_agent/` and Chroma as primary vector store; the current codebase uses the layout above and Postgres/pgvector direction per README. Update feature specs when migration work completes.

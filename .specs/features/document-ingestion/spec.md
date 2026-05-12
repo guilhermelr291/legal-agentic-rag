@@ -323,9 +323,9 @@ pages = loader.load()
    - `^(?:\d+\.\s*|Article\s+\d+|Art\.\s*\d+|Clause\s+\d+|SECTION|CHAPTER|TITLE)`
 
 2. Create chunks by section, keeping the heading as a prefix
-3. If chunk > 800 tokens: split by paragraph
+3. If chunk > 1000 tokens: split by paragraph
 4. If chunk < 100 tokens: merge with the next chunk
-5. Overlap: 50 tokens from the previous chunk
+5. Overlap: 100 tokens (10%) from the previous chunk
 6. `section_hint` = detected heading
 7. `section_path` = detected hierarchy (if available)
 8. `anchors` = detected references (Clause X / Article Y / Annex Z)

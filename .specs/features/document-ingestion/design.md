@@ -258,9 +258,9 @@ class XLSXMetadataExtractor:
 class LegalChunker:
     def __init__(
         self,
-        max_tokens: int = 800,
+        max_tokens: int = 1000,
         min_tokens: int = 100,
-        overlap_tokens: int = 50,
+        overlap_tokens: int = 100,  # 10% of max_tokens
     ):
         ...
 

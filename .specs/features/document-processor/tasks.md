@@ -10,7 +10,7 @@
 
 | Task | Description | Priority | Status | Requirement IDs |
 |------|-------------|----------|--------|-----------------|
-| T1 | Create document processing exception hierarchy | P1 | pending | PROC-13, PROC-14, PROC-15, PROC-16, PROC-17 |
+| T1 | Create document processing exception hierarchy | P1 | **completed** | PROC-13, PROC-14, PROC-15, PROC-16, PROC-17 |
 | T2 | Create DocumentProcessor class with constructor injection | P1 | pending | PROC-01, PROC-13 |
 | T3 | Implement download stage with temp file handling | P1 | pending | PROC-01, PROC-13, PROC-17 |
 | T4 | Implement PDF/DOCX processing pipeline | P1 | pending | PROC-02, PROC-03, PROC-04, PROC-05, PROC-06 |
@@ -36,14 +36,14 @@
 - `ProcessingError` from `src/common/exceptions.py` as base class
 
 **Done when**:
-- [ ] `DocumentProcessingError` base class exists with `message`, `stage`, `code` attributes
-- [ ] `ExtractionFailedError` class exists with `file_type` attribute
-- [ ] `NoTextContentError` class exists
-- [ ] `ChunkingFailedError` class exists
-- [ ] `EmbeddingGenerationError` class exists with `batch_number` attribute
-- [ ] `DatabaseError` class exists
-- [ ] All exception classes properly extend `DocumentProcessingError`
-- [ ] All exception classes are importable from the module
+- [x] `DocumentProcessingError` base class exists with `message`, `stage`, `code` attributes
+- [x] `ExtractionFailedError` class exists with `file_type` attribute
+- [x] `NoTextContentError` class exists
+- [x] `ChunkingFailedError` class exists
+- [x] `EmbeddingGenerationError` class exists with `batch_number` attribute
+- [x] `DatabaseError` class exists
+- [x] All exception classes properly extend `DocumentProcessingError`
+- [x] All exception classes are importable from the module
 
 **Tests**:
 - Unit test: Instantiate each exception type and verify attributes

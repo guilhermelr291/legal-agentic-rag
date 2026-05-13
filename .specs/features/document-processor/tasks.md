@@ -11,7 +11,7 @@
 | Task | Description | Priority | Status | Requirement IDs |
 |------|-------------|----------|--------|-----------------|
 | T1 | Create document processing exception hierarchy | P1 | **completed** | PROC-13, PROC-14, PROC-15, PROC-16, PROC-17 |
-| T2 | Create DocumentProcessor class with constructor injection | P1 | pending | PROC-01, PROC-13 |
+| T2 | Create DocumentProcessor class with constructor injection | P1 | **completed** | PROC-01, PROC-13 |
 | T3 | Implement download stage with temp file handling | P1 | pending | PROC-01, PROC-13, PROC-17 |
 | T4 | Implement PDF/DOCX processing pipeline | P1 | pending | PROC-02, PROC-03, PROC-04, PROC-05, PROC-06 |
 | T5 | Implement XLSX metadata extraction pipeline | P1 | pending | PROC-08, PROC-09, PROC-10, PROC-11, PROC-12 |
@@ -80,12 +80,12 @@ pytest tests/unit/documents/test_exceptions.py -v
 - `ProcessingContext` dataclass (to be defined internally)
 
 **Done when**:
-- [ ] `DocumentProcessor` class exists with `__init__` accepting all required services
-- [ ] `ProcessingContext` dataclass defined with all required fields
-- [ ] `process()` method stub exists with proper signature
-- [ ] Internal methods `_process_pdf_docx()` and `_process_xlsx()` stubs exist
-- [ ] `_cleanup_temp_file()` helper method exists
-- [ ] All imports are valid and module is importable
+- [x] `DocumentProcessor` class exists with `__init__` accepting all required services
+- [x] `ProcessingContext` dataclass defined with all required fields
+- [x] `process()` method stub exists with proper signature
+- [x] Internal methods `_process_pdf_docx()` and `_process_xlsx()` stubs exist
+- [x] `_cleanup_temp_file()` helper method exists
+- [x] All imports are valid and module is importable
 
 **Tests**:
 - Unit test: Instantiate DocumentProcessor with mock services

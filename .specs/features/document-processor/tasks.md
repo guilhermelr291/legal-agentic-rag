@@ -12,7 +12,7 @@
 |------|-------------|----------|--------|-----------------|
 | T1 | Create document processing exception hierarchy | P1 | **completed** | PROC-13, PROC-14, PROC-15, PROC-16, PROC-17 |
 | T2 | Create DocumentProcessor class with constructor injection | P1 | **completed** | PROC-01, PROC-13 |
-| T3 | Implement download stage with temp file handling | P1 | pending | PROC-01, PROC-13, PROC-17 |
+| T3 | Implement download stage with temp file handling | P1 | **completed** | PROC-01, PROC-13, PROC-17 |
 | T4 | Implement PDF/DOCX processing pipeline | P1 | pending | PROC-02, PROC-03, PROC-04, PROC-05, PROC-06 |
 | T5 | Implement XLSX metadata extraction pipeline | P1 | pending | PROC-08, PROC-09, PROC-10, PROC-11, PROC-12 |
 | T6 | Add chunk upsert method to DocumentService | P1 | pending | PROC-05 |
@@ -119,13 +119,13 @@ pytest tests/unit/documents/test_processor_init.py -v
 - SQLAlchemy async patterns for document lookup
 
 **Done when**:
-- [ ] `process()` method loads document record and verifies `status='processing'`
-- [ ] File is downloaded from storage to temp location using `tempfile.NamedTemporaryFile`
-- [ ] Download stage is logged with duration
-- [ ] `ProcessingContext` is populated with file_path
-- [ ] `_cleanup_temp_file()` properly deletes temp file in `finally` block
-- [ ] Cleanup logs warning if file doesn't exist (already cleaned)
-- [ ] Cleanup logs error on permission failure but doesn't affect status
+- [x] `process()` method loads document record and verifies `status='processing'`
+- [x] File is downloaded from storage to temp location using `tempfile.NamedTemporaryFile`
+- [x] Download stage is logged with duration
+- [x] `ProcessingContext` is populated with file_path
+- [x] `_cleanup_temp_file()` properly deletes temp file in `finally` block
+- [x] Cleanup logs warning if file doesn't exist (already cleaned)
+- [x] Cleanup logs error on permission failure but doesn't affect status
 
 **Tests**:
 - Unit test: Verify temp file is created and cleaned up on success

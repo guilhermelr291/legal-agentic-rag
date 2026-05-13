@@ -211,6 +211,44 @@ class StorageService:
                 f"Failed to download file from {bucket_name}/{file_path}: {e}"
             ) from e
 
+    async def download_to_path(
+        self,
+        bucket_name: str,
+        file_path: str,
+        destination: Path,
+    ) -> None:
+        """Download a file from Supabase Storage to a local path.
+
+        Args:
+            bucket_name: Storage bucket name.
+            file_path: Path to the file within the bucket.
+            destination: Local file path to write the downloaded content.
+
+        Raises:
+            StorageError: If download fails or file not found.
+        """
+        try:
+            async with self._storage_bucket(bucket_name) as bucket:
+                response = await bucket.download(path=file_path)
+
+                # Write bytes to the destination file
+                destination.write_bytes(response)
+
+                logger.info(
+                    "File downloaded to %s: %s/%s",
+                    destination,
+                    bucket_name,
+                    file_path,
+                )
+
+        except StorageError:
+            raise
+        except Exception as e:
+            logger.exception("Failed to download file: %s/%s", bucket_name, file_path)
+            raise StorageError(
+                f"Failed to download file from {bucket_name}/{file_path}: {e}"
+            ) from e
+
     async def delete_file(
         self,
         bucket_name: str,

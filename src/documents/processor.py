@@ -8,9 +8,13 @@ Uses constructor injection for all dependencies to enable testability.
 from __future__ import annotations
 
 import logging
+import tempfile
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import select
 
 from src.documents.exceptions import (
     ChunkingFailedError,
@@ -20,6 +24,8 @@ from src.documents.exceptions import (
     ExtractionFailedError,
     NoTextContentError,
 )
+from src.documents.models import Document
+from src.storage.config import storage_settings
 
 if TYPE_CHECKING:
     # Type-only imports to avoid heavy dependencies during test collection
@@ -104,8 +110,98 @@ class DocumentProcessor:
         Updates document status and creates chunks in database.
         All errors are caught, logged, and status is updated to 'failed'.
         """
-        # TODO: Implement in T3, T4, T5
-        raise NotImplementedError("process() to be implemented in subsequent tasks")
+        logger.info("Starting document processing: %s (user: %s)", document_id, user_id)
+        start_time = time.time()
+
+        # Load document and verify status
+        result = await self._db.execute(
+            select(Document).where(Document.id == document_id, Document.user_id == user_id)
+        )
+        document = result.scalar_one_or_none()
+
+        if document is None:
+            logger.error("Document not found: %s (user: %s)", document_id, user_id)
+            raise DocumentProcessingError(
+                message=f"Document not found: {document_id}",
+                stage="initialization",
+                code="DOCUMENT_NOT_FOUND",
+            )
+
+        if document.status != "processing":
+            logger.error(
+                "Document %s has invalid status for processing: %s (expected: processing)",
+                document_id,
+                document.status,
+            )
+            raise DocumentProcessingError(
+                message=f"Document status is '{document.status}', expected 'processing'",
+                stage="initialization",
+                code="INVALID_DOCUMENT_STATUS",
+            )
+
+        # Determine file extension for temp file
+        file_ext = Path(document.filename).suffix or ".tmp"
+
+        # Create temp file and download
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+
+        context: ProcessingContext | None = None
+        try:
+            # Download stage
+            download_start = time.time()
+            logger.info("Starting download stage for document: %s", document_id)
+
+            bucket_name = storage_settings.SUPABASE_STORAGE_BUCKET
+            await self._storage.download_to_path(
+                bucket_name=bucket_name,
+                file_path=document.storage_path,
+                destination=tmp_path,
+            )
+
+            download_duration = time.time() - download_start
+            logger.info(
+                "Download stage completed for document: %s (duration: %.3fs)",
+                document_id,
+                download_duration,
+            )
+
+            # Create processing context
+            context = ProcessingContext(
+                document_id=document_id,
+                user_id=user_id,
+                file_path=tmp_path,
+                stage_timings={"download": download_duration},
+                current_stage="download",
+            )
+
+            # TODO: T4, T5 - Route to appropriate processor based on file type
+            # For now, just log that we have the file ready
+            logger.info(
+                "Document %s downloaded to %s, ready for processing",
+                document_id,
+                tmp_path,
+            )
+
+        except Exception:
+            # Log and re-raise for outer error handling
+            logger.exception("Error during document processing: %s", document_id)
+            raise
+
+        finally:
+            # Always clean up temp file
+            if context is not None:
+                self._cleanup_temp_file(context.file_path)
+            else:
+                # If context wasn't created, cleanup the tmp_path we created
+                self._cleanup_temp_file(tmp_path)
+
+            total_duration = time.time() - start_time
+            logger.info(
+                "Document processing completed for: %s (total duration: %.3fs)",
+                document_id,
+                total_duration,
+            )
 
     async def _process_pdf_docx(self, context: ProcessingContext) -> None:
         """Process PDF or DOCX file: extract → chunk → embed → persist.

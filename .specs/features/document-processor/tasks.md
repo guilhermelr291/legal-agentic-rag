@@ -13,7 +13,7 @@
 | T1 | Create document processing exception hierarchy | P1 | **completed** | PROC-13, PROC-14, PROC-15, PROC-16, PROC-17 |
 | T2 | Create DocumentProcessor class with constructor injection | P1 | **completed** | PROC-01, PROC-13 |
 | T3 | Implement download stage with temp file handling | P1 | **completed** | PROC-01, PROC-13, PROC-17 |
-| T4 | Implement PDF/DOCX processing pipeline | P1 | pending | PROC-02, PROC-03, PROC-04, PROC-05, PROC-06 |
+| T4 | Implement PDF/DOCX processing pipeline | P1 | **completed** | PROC-02, PROC-03, PROC-04, PROC-05, PROC-06 |
 | T5 | Implement XLSX metadata extraction pipeline | P1 | pending | PROC-08, PROC-09, PROC-10, PROC-11, PROC-12 |
 | T6 | Add chunk upsert method to DocumentService | P1 | pending | PROC-05 |
 | T7 | Integrate processor into router background task | P1 | pending | PROC-01, PROC-07 |
@@ -161,17 +161,17 @@ pytest tests/unit/documents/test_processor_download.py -v
 - PostgreSQL upsert pattern with `on_conflict_do_update`
 
 **Done when**:
-- [ ] `_process_pdf_docx()` extracts text using `ExtractionService`
-- [ ] Raises `NoTextContentError` when extracted text is empty
-- [ ] Chunks text using `ChunkingService` with page information
-- [ ] Raises `ChunkingFailedError` when chunking fails
-- [ ] Generates embeddings in batches of 100 using `EmbeddingsService`
-- [ ] Retries failed batch once with 2s delay
-- [ ] Raises `EmbeddingGenerationError` when retry fails
-- [ ] Upserts chunks to database with `ON CONFLICT DO UPDATE`
-- [ ] Updates document `status='ready'` and `processed_at` on success
-- [ ] Updates document `error_msg` and `status='failed'` on any error
-- [ ] Each stage logs start/complete with duration
+- [x] `_process_pdf_docx()` extracts text using `ExtractionService`
+- [x] Raises `NoTextContentError` when extracted text is empty
+- [x] Chunks text using `ChunkingService` with page information
+- [x] Raises `ChunkingFailedError` when chunking fails
+- [x] Generates embeddings in batches of 100 using `EmbeddingsService`
+- [x] Retries failed batch once with 2s delay (handled by EmbeddingsService)
+- [x] Raises `EmbeddingGenerationError` when retry fails
+- [x] Upserts chunks to database with `ON CONFLICT DO UPDATE`
+- [x] Updates document `status='ready'` and `processed_at` on success
+- [x] Updates document `error_msg` and `status='failed'` on any error
+- [x] Each stage logs start/complete with duration
 
 **Tests**:
 - Integration test: Full PDF pipeline with mocked services
@@ -405,8 +405,8 @@ T8 (Tests) ←────────────── T1, T2, T3, T4, T5, T6,
 - T3: Implement download stage
 
 **Phase 3 (Parallel from T3)**:
-- [P] T4: Implement PDF/DOCX pipeline
-- [P] T5: Implement XLSX pipeline
+- [x] [P] T4: Implement PDF/DOCX pipeline ✅
+- [ ] [P] T5: Implement XLSX pipeline
 
 **Phase 4 (After T4, T5)**:
 - T7: Integrate processor into router
@@ -421,11 +421,11 @@ T8 (Tests) ←────────────── T1, T2, T3, T4, T5, T6,
 | Requirement | Story | Task(s) | Status |
 |-------------|-------|---------|--------|
 | PROC-01 | P1 PDF/DOCX | T2, T3, T7 | In Tasks |
-| PROC-02 | P1 PDF/DOCX | T4 | In Tasks |
-| PROC-03 | P1 PDF/DOCX | T4 | In Tasks |
-| PROC-04 | P1 PDF/DOCX | T4 | In Tasks |
-| PROC-05 | P1 PDF/DOCX | T4, T6 | In Tasks |
-| PROC-06 | P1 PDF/DOCX | T4 | In Tasks |
+| PROC-02 | P1 PDF/DOCX | T4 | **completed** |
+| PROC-03 | P1 PDF/DOCX | T4 | **completed** |
+| PROC-04 | P1 PDF/DOCX | T4 | **completed** |
+| PROC-05 | P1 PDF/DOCX | T4, T6 | T4 **completed** |
+| PROC-06 | P1 PDF/DOCX | T4 | **completed** |
 | PROC-07 | P1 PDF/DOCX | T3, T7 | In Tasks |
 | PROC-08 | P2 XLSX | T5 | In Tasks |
 | PROC-09 | P2 XLSX | T5 | In Tasks |

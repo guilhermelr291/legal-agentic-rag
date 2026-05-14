@@ -16,7 +16,7 @@
 | T4 | Implement PDF/DOCX processing pipeline | P1 | **completed** | PROC-02, PROC-03, PROC-04, PROC-05, PROC-06 |
 | T5 | Implement XLSX metadata extraction pipeline | P1 | **completed** | PROC-08, PROC-09, PROC-10, PROC-11, PROC-12 |
 | T6 | Add chunk upsert method to DocumentService | P1 | pending | PROC-05 |
-| T7 | Integrate processor into router background task | P1 | pending | PROC-01, PROC-07 |
+| T7 | Integrate processor into router background task | P1 | **completed** | PROC-01, PROC-07 |
 | T8 | Write unit tests for DocumentProcessor | P1 | pending | All PROC requirements |
 
 ---
@@ -296,14 +296,14 @@ pytest tests/unit/documents/test_service_upsert_chunks.py -v
 - All existing service initialization patterns
 
 **Done when**:
-- [ ] TODO at `src/documents/router.py:149-151` is removed
-- [ ] `trigger_document_processing()` background task function exists
-- [ ] Function initializes all required services (Storage, Extraction, Chunking, Embeddings)
-- [ ] Function creates isolated DB session using `SessionFactory()`
-- [ ] Function instantiates `DocumentProcessor` with all dependencies
-- [ ] Function calls `processor.process(document_id, user_id)`
-- [ ] Background task is added via `background_tasks.add_task()` in upload endpoint
-- [ ] Upload endpoint returns 201 immediately (doesn't wait for processing)
+- [x] TODO at `src/documents/router.py:149-151` is removed
+- [x] `trigger_document_processing()` background task function exists
+- [x] Function initializes all required services (Storage, Extraction, Chunking, Embeddings)
+- [x] Function creates isolated DB session using `SessionFactory()`
+- [x] Function instantiates `DocumentProcessor` with all dependencies
+- [x] Function calls `processor.process(document_id, user_id)`
+- [x] Background task is added via `background_tasks.add_task()` in upload endpoint
+- [x] Upload endpoint returns 201 immediately (doesn't wait for processing)
 
 **Tests**:
 - Integration test: Upload endpoint returns 201 and triggers background task

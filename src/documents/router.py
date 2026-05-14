@@ -18,11 +18,13 @@ from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, status
 
-from src.common.database import DbDep
+from src.chunking.service import ChunkingService
+from src.common.database import DbDep, SessionFactory
 from src.common.exceptions import StorageError
 from src.documents.config import documents_settings
 from src.documents.dependencies import DocumentDep, UserIdDep
 from src.documents.models import Document
+from src.documents.processor import DocumentProcessor
 from src.documents.schemas import (
     DocumentListResponse,
     DocumentStatusResponse,
@@ -31,7 +33,10 @@ from src.documents.schemas import (
     UploadResponse,
 )
 from src.documents.service import DocumentService
+from src.embeddings.service import EmbeddingsService
+from src.extractors.service import ExtractionService
 from src.storage.dependencies import StorageDep
+from src.storage.service import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -143,18 +148,42 @@ async def trigger_document_processing(
         document_id: UUID of the document to process.
         user_id: User ID for RLS enforcement.
     """
-    try:
-        logger.info("Starting background processing for document: %s", document_id)
+    logger.info("Starting background processing for document: %s", document_id)
 
-        # TODO: Import and use DocumentProcessor when available
-        # For now, this is a placeholder that will be implemented
-        # when the document processing pipeline is migrated
+    # Create isolated database session for background task
+    async with SessionFactory() as db_session:
+        try:
+            # Initialize all required services
+            storage = await StorageService.from_service_role()
+            extraction = ExtractionService()
+            chunking = ChunkingService()
+            embeddings = EmbeddingsService()
 
-        logger.info("Background processing complete for document: %s", document_id)
+            # Instantiate DocumentProcessor with all dependencies
+            processor = DocumentProcessor(
+                storage=storage,
+                extraction=extraction,
+                chunking=chunking,
+                embeddings=embeddings,
+                db=db_session,
+            )
 
-    except Exception:
-        # Log error but don't re-raise - processor should have set status to failed
-        logger.exception("Background processing failed for document: %s", document_id)
+            # Process the document
+            await processor.process(document_id, user_id)
+
+            # Commit any pending database changes
+            await db_session.commit()
+
+            logger.info("Background processing complete for document: %s", document_id)
+
+        except Exception:
+            # Log error but don't re-raise - processor should have set status to failed
+            logger.exception("Background processing failed for document: %s", document_id)
+            # Attempt to rollback any pending changes
+            try:
+                await db_session.rollback()
+            except Exception:
+                logger.exception("Failed to rollback session for document: %s", document_id)
 
 
 # =============================================================================

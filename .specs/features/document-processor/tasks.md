@@ -14,7 +14,7 @@
 | T2 | Create DocumentProcessor class with constructor injection | P1 | **completed** | PROC-01, PROC-13 |
 | T3 | Implement download stage with temp file handling | P1 | **completed** | PROC-01, PROC-13, PROC-17 |
 | T4 | Implement PDF/DOCX processing pipeline | P1 | **completed** | PROC-02, PROC-03, PROC-04, PROC-05, PROC-06 |
-| T5 | Implement XLSX metadata extraction pipeline | P1 | pending | PROC-08, PROC-09, PROC-10, PROC-11, PROC-12 |
+| T5 | Implement XLSX metadata extraction pipeline | P1 | **completed** | PROC-08, PROC-09, PROC-10, PROC-11, PROC-12 |
 | T6 | Add chunk upsert method to DocumentService | P1 | pending | PROC-05 |
 | T7 | Integrate processor into router background task | P1 | pending | PROC-01, PROC-07 |
 | T8 | Write unit tests for DocumentProcessor | P1 | pending | All PROC requirements |
@@ -210,14 +210,14 @@ pytest tests/integration/test_document_processor_pdf.py -v
 - Document model's `meta` JSONB field for storing structure
 
 **Done when**:
-- [ ] `_process_xlsx()` extracts sheet names and column names using `ExtractionService`
-- [ ] Validates that XLSX has at least one sheet
-- [ ] Raises `ExtractionFailedError` for password-protected XLSX
-- [ ] Raises `ExtractionFailedError` for empty XLSX (0 sheets)
-- [ ] Saves metadata structure to `document.meta['xlsx_structure']`
-- [ ] Updates document `status='ready'` without creating chunks
-- [ ] Verifies no chunks exist for XLSX documents after processing
-- [ ] Stage is logged with duration
+- [x] `_process_xlsx()` extracts sheet names and column names using `ExtractionService`
+- [x] Validates that XLSX has at least one sheet
+- [x] Raises `ExtractionFailedError` for password-protected XLSX
+- [x] Raises `ExtractionFailedError` for empty XLSX (0 sheets)
+- [x] Saves metadata structure to `document.meta['xlsx_structure']`
+- [x] Updates document `status='ready'` without creating chunks
+- [x] Verifies no chunks exist for XLSX documents after processing
+- [x] Stage is logged with duration
 
 **Tests**:
 - Integration test: Full XLSX pipeline with mocked services

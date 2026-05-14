@@ -405,11 +405,142 @@ class DocumentProcessor:
             context: ProcessingContext with document information
 
         Raises:
-            ExtractionFailedError: If metadata extraction fails
+            ExtractionFailedError: If metadata extraction fails or XLSX is empty/protected
             DatabaseError: If database persistence fails
+
+        Updates:
+            - document.status to 'ready' on success
+            - document.processed_at timestamp on success
+            - document.meta['xlsx_structure'] with sheet/column metadata
+            - context.stage_timings with duration for extraction stage
         """
-        # TODO: Implement in T5
-        raise NotImplementedError("_process_xlsx() to be implemented in T5")
+        # Stage 1: Metadata Extraction
+        extraction_start = time.time()
+        context.current_stage = "extraction"
+        logger.info("Starting XLSX metadata extraction for document: %s", context.document_id)
+
+        try:
+            xlsx_metadata = await self._extraction.extract_metadata(context.file_path)
+        except Exception as e:
+            logger.exception("XLSX metadata extraction failed for document: %s", context.document_id)
+            raise ExtractionFailedError(message=str(e), file_type="xlsx") from e
+
+        # Check if extraction reported failure
+        if not xlsx_metadata.success:
+            error_msg = xlsx_metadata.error or "Unknown XLSX extraction error"
+            logger.error(
+                "XLSX metadata extraction failed for document %s: %s",
+                context.document_id,
+                error_msg,
+            )
+            raise ExtractionFailedError(message=error_msg, file_type="xlsx")
+
+        # Check for password-protected XLSX (indicated by specific error patterns)
+        if xlsx_metadata.error and ("password" in xlsx_metadata.error.lower() or "protected" in xlsx_metadata.error.lower()):
+            logger.error("XLSX is password-protected: %s", context.document_id)
+            raise ExtractionFailedError(
+                message="XLSX file is password-protected and cannot be processed",
+                file_type="xlsx",
+            )
+
+        # Validate at least one sheet exists
+        if xlsx_metadata.total_sheets == 0 or not xlsx_metadata.sheet_names:
+            logger.error("XLSX has no sheets: %s", context.document_id)
+            raise ExtractionFailedError(
+                message="XLSX file contains no sheets",
+                file_type="xlsx",
+            )
+
+        extraction_duration = time.time() - extraction_start
+        context.stage_timings["extraction"] = extraction_duration
+        context.xlsx_metadata = xlsx_metadata
+        logger.info(
+            "XLSX metadata extraction completed for document: %s (duration: %.3fs, sheets: %d)",
+            context.document_id,
+            extraction_duration,
+            xlsx_metadata.total_sheets,
+        )
+
+        # Stage 2: Build and Save XLSX Structure to Document Meta
+        persistence_start = time.time()
+        context.current_stage = "persistence"
+        logger.info("Starting XLSX metadata persistence for document: %s", context.document_id)
+
+        try:
+            await self._save_xlsx_metadata(context, xlsx_metadata)
+        except Exception as e:
+            logger.exception("Failed to save XLSX metadata for document: %s", context.document_id)
+            raise DatabaseError(message=f"Failed to save XLSX metadata: {e}") from e
+
+        persistence_duration = time.time() - persistence_start
+        context.stage_timings["persistence"] = persistence_duration
+        logger.info(
+            "XLSX metadata persistence completed for document: %s (duration: %.3fs)",
+            context.document_id,
+            persistence_duration,
+        )
+
+        # Stage 3: Update Document Status to Ready (no chunks created for XLSX)
+        try:
+            await self._update_document_status_to_ready(context.document_id, context.user_id)
+        except Exception as e:
+            logger.exception("Failed to update document status for document: %s", context.document_id)
+            raise DatabaseError(message=f"Failed to update document status: {e}") from e
+
+        logger.info(
+            "XLSX processing completed successfully: %s (sheets: %d, total stages: %d)",
+            context.document_id,
+            xlsx_metadata.total_sheets,
+            len(context.stage_timings),
+        )
+
+    async def _save_xlsx_metadata(
+        self,
+        context: ProcessingContext,
+        xlsx_metadata: Any,  # XLSXMetadata in runtime
+    ) -> None:
+        """Save XLSX metadata structure to document.meta['xlsx_structure'].
+
+        Args:
+            context: ProcessingContext with document info
+            xlsx_metadata: XLSXMetadata object with sheet/column information
+
+        Raises:
+            Exception: If database update fails
+        """
+        from sqlalchemy import update
+
+        # Build xlsx_structure for document.meta
+        xlsx_structure = {
+            "sheet_names": xlsx_metadata.sheet_names,
+            "total_sheets": xlsx_metadata.total_sheets,
+            "sheets": xlsx_metadata.sheets,
+        }
+
+        # Update document meta with xlsx_structure
+        stmt = (
+            update(Document)
+            .where(
+                Document.id == context.document_id,
+                Document.user_id == context.user_id,
+            )
+            .values(
+                meta={"xlsx_structure": xlsx_structure},
+            )
+        )
+
+        result = await self._db.execute(stmt)
+        await self._db.flush()
+
+        # Verify the update happened
+        if result.rowcount == 0:
+            raise Exception(f"Document not found or metadata not updated: {context.document_id}")
+
+        logger.debug(
+            "Saved XLSX metadata to document %s: %d sheets",
+            context.document_id,
+            xlsx_metadata.total_sheets,
+        )
 
     async def _upsert_chunks(
         self,

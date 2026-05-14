@@ -255,13 +255,13 @@ pytest tests/integration/test_document_processor_xlsx.py -v
 - Existing `Chunk` model with unique constraint
 
 **Done when**:
-- [ ] `upsert_chunks()` method exists in `DocumentService`
-- [ ] Method accepts list of chunk dictionaries
-- [ ] Uses `insert(Chunk).on_conflict_do_update()` pattern
-- [ ] Updates all chunk fields on conflict: content, embedding, section_hint, section_path, page_start, page_end, anchors, char_start, char_end
-- [ ] Uses `index_elements=['document_id', 'chunk_index']` for conflict detection
-- [ ] Method is async and uses provided database session
-- [ ] Returns number of chunks upserted
+- [x] `upsert_chunks()` method exists in `DocumentService`
+- [x] Method accepts list of chunk dictionaries
+- [x] Uses `insert(Chunk).on_conflict_do_update()` pattern
+- [x] Updates all chunk fields on conflict: content, embedding, section_hint, section_path, page_start, page_end, anchors, char_start, char_end
+- [x] Uses `index_elements=['document_id', 'chunk_index']` for conflict detection
+- [x] Method is async and uses provided database session
+- [x] Returns number of chunks upserted
 
 **Tests**:
 - Unit test: Insert new chunks

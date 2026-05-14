@@ -3,6 +3,6 @@
 import sys
 from pathlib import Path
 
-# Add src directory to Python path for imports
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
+# Add project root to Python path for imports (to support 'src.X' imports)
+root_path = Path(__file__).parent.parent
+sys.path.insert(0, str(root_path))

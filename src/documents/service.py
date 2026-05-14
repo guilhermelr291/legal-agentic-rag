@@ -9,10 +9,11 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, insert, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.documents.models import Document
+from src.documents.models import Chunk, Document
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +201,57 @@ class DocumentService:
         )
         await self._db.flush()
         return result.rowcount > 0
+
+    async def upsert_chunks(self, chunks: list[dict[str, Any]]) -> int:
+        """Upsert chunks for idempotent chunk persistence.
+
+        Uses PostgreSQL upsert (INSERT ... ON CONFLICT DO UPDATE) to insert
+        new chunks or update existing ones based on (document_id, chunk_index)
+        unique constraint.
+
+        Args:
+            chunks: List of chunk dictionaries with keys:
+                - document_id: str
+                - user_id: str
+                - chunk_index: int
+                - content: str
+                - embedding: list[float] | None
+                - section_hint: str | None
+                - section_path: list[str]
+                - page_start: int | None
+                - page_end: int | None
+                - anchors: list[str]
+                - char_start: int
+                - char_end: int
+
+        Returns:
+            Number of chunks upserted (inserted or updated).
+        """
+        if not chunks:
+            return 0
+
+        # Build insert statement with all chunk fields
+        stmt = (
+            pg_insert(Chunk)
+            .values(chunks)
+            .on_conflict_do_update(
+                index_elements=["document_id", "chunk_index"],
+                set_={
+                    "content": pg_insert(Chunk).excluded.content,
+                    "embedding": pg_insert(Chunk).excluded.embedding,
+                    "section_hint": pg_insert(Chunk).excluded.section_hint,
+                    "section_path": pg_insert(Chunk).excluded.section_path,
+                    "page_start": pg_insert(Chunk).excluded.page_start,
+                    "page_end": pg_insert(Chunk).excluded.page_end,
+                    "anchors": pg_insert(Chunk).excluded.anchors,
+                    "char_start": pg_insert(Chunk).excluded.char_start,
+                    "char_end": pg_insert(Chunk).excluded.char_end,
+                },
+            )
+        )
+
+        result = await self._db.execute(stmt)
+        return result.rowcount
 
 
 class DocumentsServiceError(Exception):
